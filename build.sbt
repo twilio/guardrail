@@ -57,6 +57,7 @@ val exampleCases: List[(java.io.File, String, Boolean, List[String])] = List(
   (sampleResource("issues/issue249.yaml"), "issues.issue249", false, List.empty),
   (sampleResource("issues/issue264.yaml"), "issues.issue264", false, List.empty),
   (sampleResource("issues/issue325.yaml"), "issues.issue325", false, List.empty),
+  (sampleResource("issues/issueX.yaml"), "issues.issueX", false, List.empty),
   (sampleResource("multipart-form-data.yaml"), "multipartFormData", false, List.empty),
   (sampleResource("petstore.json"), "examples", false, List("--import", "support.PositiveLong")),
   (sampleResource("plain.json"), "tests.dtos", false, List.empty),
@@ -332,3 +333,15 @@ watchSources ++= (baseDirectory.value / "modules/sample/src/test" ** "*.scala").
 watchSources ++= (baseDirectory.value / "modules/sample/src/test" ** "*.java").get
 
 logBuffered in Test := false
+
+lazy val runExample: TaskKey[Unit] = taskKey[Unit]("Run with example args")
+
+fullRunTask(
+  runExample,
+  Test,
+  "com.twilio.guardrail.CLI",
+  """
+  --defaults
+  --server --specPath modules/sample/src/main/resources/issues/issueX.yaml --outputPath modules/sample/src/main/scala --packageName issues.issueX
+""".replaceAllLiterally("\n", " ").split(' ').filter(_.nonEmpty): _*
+)

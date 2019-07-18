@@ -1,0 +1,19 @@
+swagger: "2.0"
+info:
+  version: "1.0.1"
+basePath: "/v1"
+paths:
+  /foo:
+    get:
+      operationId: "getFoo"
+      parameters:
+        - name: keys
+          in: query
+          type: array
+          items:
+            type: integer
+            format: int32
+
+      responses:
+        200:
+          description: "successful operation"
