@@ -1,0 +1,73 @@
+swagger: "2.0"
+info:
+  title: Whatever
+  version: 1.0.0
+host: localhost:1234
+schemes:
+  - http
+definitions:
+  SecureAddress:
+    type: object
+    properties:
+      line1:
+        type: string
+      line2:
+        type: string
+      line3:
+        type: string
+#  UnauthorizedError:
+#    headers:
+#      WWW_Authenticate:
+#          type: string
+
+paths:
+  /secure/address:
+    get:
+      operationId: getSecureAddresses
+      x-jvm-package: secure.addresses
+      security:
+        - basicAuth: []
+      produces:
+        - application/json
+      responses:
+        '200':
+          type: array
+          items:
+            $ref: '#/definitions/SecureAddress'
+#        '401':
+#          description: Unauthorized
+#          $ref: '#/definitions/UnauthorizedError'
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+
+  /secure/address/{id}:
+    get:
+      operationId: getSecureAddress
+      x-jvm-package: secure.addresses
+      security:
+        - basicAuth: []
+      produces:
+        - application/json
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      responses:
+        '200':
+          schema:
+            $ref: '#/definitions/SecureAddress'
+#        '401':
+#          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic

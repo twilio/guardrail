@@ -17,6 +17,7 @@ case class Server[L <: LA](pkg: List[String], extraImports: List[L#Import], hand
 case class TracingField[L <: LA](param: ScalaParameter[L], term: L#Term)
 case class RenderedRoutes[L <: LA](
     routes: List[L#Term],
+    secureRoutes: List[L#Term],
     classAnnotations: List[L#Annotation],
     methodSigs: List[L#MethodDeclaration],
     supportDefinitions: List[L#Definition],
@@ -60,14 +61,27 @@ object ServerGenerator {
                 } yield (responseDefinitions, (operationId, tracingField, route, parameters, responses))
             }
             (responseDefinitions, serverOperations) = responseServerPair.unzip
-            renderedRoutes   <- generateRoutes(context.tracing, resourceName, basePath, serverOperations, protocolElems, securitySchemes)
-            handlerSrc       <- renderHandler(handlerName, renderedRoutes.methodSigs, renderedRoutes.handlerDefinitions, responseDefinitions.flatten)
+            renderedRoutes <- generateRoutes(context.tracing,
+                                             resourceName,
+                                             basePath,
+                                             serverOperations,
+                                             protocolElems,
+                                             securitySchemes,
+                                             context.http4sAuthedRoutes)
+            handlerSrc <- renderHandler(
+              handlerName,
+              renderedRoutes.methodSigs,
+              renderedRoutes.handlerDefinitions,
+              responseDefinitions.flatten,
+              renderedRoutes.secureRoutes.nonEmpty && context.http4sAuthedRoutes
+            )
             extraRouteParams <- getExtraRouteParams(context.tracing)
             classSrc <- renderClass(
               resourceName,
               handlerName,
               renderedRoutes.classAnnotations,
               renderedRoutes.routes,
+              renderedRoutes.secureRoutes,
               extraRouteParams,
               responseDefinitions.flatten,
               renderedRoutes.supportDefinitions

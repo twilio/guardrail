@@ -43,35 +43,43 @@ object Http4sServerGenerator {
           } else Target.pure(None)
         } yield res)
 
-      case GenerateRoutes(tracing, resourceName, basePath, routes, protocolElems, securitySchemes) =>
+      case GenerateRoutes(tracing, resourceName, basePath, routes, protocolElems, securitySchemes, authedRoutes) =>
+        def toListOfRoutes(l: List[Case]) = if (l.nonEmpty) combineRouteTerms(l).map(List(_)) else Target.pure(List.empty)
         for {
-          renderedRoutes <- routes
+          (authedRenderedRoutes, renderedRoutes) <- routes
             .traverse {
               case (operationId, tracingFields, sr @ RouteMeta(path, method, operation, securityRequirements), parameters, responses) =>
-                generateRoute(resourceName, basePath, sr, tracingFields, parameters, responses)
+                generateRoute(resourceName, basePath, sr, tracingFields, parameters, responses, authedRoutes)
             }
             .map(_.flatten)
-          routeTerms = renderedRoutes.map(_.route)
-          combinedRouteTerms <- combineRouteTerms(routeTerms)
-          methodSigs = renderedRoutes.map(_.methodSig)
+            .map(_.span(_.authedRoute))
+
+          routeTerms       <- toListOfRoutes(renderedRoutes.map(_.route))
+          authedRouteTerms <- toListOfRoutes(authedRenderedRoutes.map(_.route))
+          allRoutes  = renderedRoutes ++ authedRenderedRoutes
+          methodSigs = allRoutes.map(_.methodSig)
         } yield {
           RenderedRoutes[ScalaLanguage](
-            List(combinedRouteTerms),
+            routeTerms,
+            authedRouteTerms,
             List.empty,
             methodSigs,
-            renderedRoutes.flatMap(_.supportDefinitions).groupBy(_.structure).map(_._2.head).toList, // Only unique supportDefinitions by structure
-            renderedRoutes.flatMap(_.handlerDefinitions)
+            allRoutes.flatMap(_.supportDefinitions).groupBy(_.structure).map(_._2.head).toList, // Only unique supportDefinitions by structure
+            allRoutes.flatMap(_.handlerDefinitions)
           )
         }
 
-      case RenderHandler(handlerName, methodSigs, handlerDefinitions, responseDefinitions) =>
+      case RenderHandler(handlerName, methodSigs, handlerDefinitions, responseDefinitions, securityRequirements) =>
         Target.log.function("renderHandler")(for {
           _ <- Target.log.debug(s"Args: ${handlerName}, ${methodSigs}")
-        } yield q"""
-          trait ${Type.Name(handlerName)}[F[_]] {
+        } yield {
+          val kind = if (securityRequirements) List(tparam"F[_]", tparam"U") else List(tparam"F[_]")
+          q"""
+          trait ${Type.Name(handlerName)}[..$kind] {
             ..${methodSigs ++ handlerDefinitions}
           }
-        """)
+        """
+        })
 
       case GetExtraRouteParams(tracing) =>
         Target.log.function("getExtraRouteParams")(for {
@@ -85,19 +93,36 @@ object Http4sServerGenerator {
       case GenerateSupportDefinitions(tracing, securitySchemes) =>
         Target.pure(List.empty)
 
-      case RenderClass(resourceName, handlerName, _, combinedRouteTerms, extraRouteParams, responseDefinitions, supportDefinitions) =>
+      case RenderClass(resourceName, handlerName, _, routeTerms, authedRouteTerms, extraRouteParams, responseDefinitions, supportDefinitions) =>
         Target.log.function("renderClass")(for {
           _ <- Target.log.debug(s"Args: ${resourceName}, ${handlerName}, <combinedRouteTerms>, ${extraRouteParams}")
-          routesParams = List(param"handler: ${Type.Name(handlerName)}[F]")
-        } yield q"""
-          class ${Type.Name(resourceName)}[F[_]](..$extraRouteParams)(implicit F: Async[F]) extends Http4sDsl[F] {
+          types        = if (authedRouteTerms.isEmpty) List(Type.Name("F")) else List(Type.Name("F"), Type.Name("U"))
+          routesParams = List(param"handler: ${Type.Name(handlerName)}[..$types]")
+        } yield {
+          val authedRoutes =
+            if (authedRouteTerms.isEmpty) None
+            else Some(q"""
+            def authedRoutes[U](..${routesParams}): AuthedRoutes[U, F] = AuthedRoutes.of {
+              ..${authedRouteTerms}
+            }""")
 
+          val routes =
+            if (routeTerms.isEmpty) None
+            else Some(q"""
+              def routes(..${routesParams}): HttpRoutes[F] = HttpRoutes.of {
+              ..${routeTerms}
+            }""")
+
+          val kind = if (authedRouteTerms.nonEmpty) List(tparam"F[_]", tparam"U") else List(tparam"F[_]")
+
+          q"""
+          class ${Type.Name(resourceName)}[..$kind](..$extraRouteParams)(implicit F: Async[F]) extends Http4sDsl[F] {
             ..${supportDefinitions};
-            def routes(..${routesParams}): HttpRoutes[F] = HttpRoutes.of {
-              ..${combinedRouteTerms}
-            }
+            ..${routes}
+            ..${authedRoutes}
           }
-        """ +: responseDefinitions)
+        """ +: responseDefinitions
+        })
 
       case GetExtraImports(tracing) =>
         Target.log.function("getExtraImports")(
@@ -157,27 +182,27 @@ object Http4sServerGenerator {
         }
       } yield directives
 
-    def bodyToHttp4s(operationId: String, body: Option[ScalaParameter[ScalaLanguage]]): Target[Option[Term => Term]] =
+    def bodyToHttp4s(operationId: String, body: Option[ScalaParameter[ScalaLanguage]], req: Term.Ref): Target[Option[Term => Term]] =
       Target.pure(
         body.map {
           case ScalaParameter(_, _, paramName, _, _) =>
             content =>
-              q"req.decodeWith(${Term.Name(s"${operationId}Decoder")}, strict = false) { ${param"$paramName"} => $content }"
+              q"$req.decodeWith(${Term.Name(s"${operationId}Decoder")}, strict = false) { ${param"$paramName"} => $content }"
         }
       )
 
     case class Param(generator: Option[Enumerator.Generator], matcher: Option[(Term, Pat)], handlerCallArg: Term)
 
-    def headersToHttp4s: List[ScalaParameter[ScalaLanguage]] => Target[List[Param]] =
+    def headersToHttp4s(req: Term.Ref): List[ScalaParameter[ScalaLanguage]] => Target[List[Param]] =
       directivesFromParams(
         arg => {
           case t"String" =>
-            Target.pure(Param(None, Some((q"req.headers.get(${arg.argName.toLit}.ci).map(_.value)", p"Some(${Pat.Var(arg.paramName)})")), arg.paramName))
+            Target.pure(Param(None, Some((q"$req.headers.get(${arg.argName.toLit}.ci).map(_.value)", p"Some(${Pat.Var(arg.paramName)})")), arg.paramName))
           case tpe =>
             Target.pure(
               Param(
                 None,
-                Some((q"req.headers.get(${arg.argName.toLit}.ci).map(_.value).map(Json.fromString(_).as[$tpe])", p"Some(Right(${Pat.Var(arg.paramName)}))")),
+                Some((q"$req.headers.get(${arg.argName.toLit}.ci).map(_.value).map(Json.fromString(_).as[$tpe])", p"Some(Right(${Pat.Var(arg.paramName)}))")),
                 arg.paramName
               )
             )
@@ -185,7 +210,7 @@ object Http4sServerGenerator {
         arg => _ => Target.raiseError(s"Unsupported Iterable[${arg}"),
         arg => _ => Target.raiseError(s"Unsupported Option[Iterable[${arg}]]"),
         arg => {
-          case t"String" => Target.pure(Param(None, None, q"req.headers.get(${arg.argName.toLit}.ci).map(_.value)"))
+          case t"String" => Target.pure(Param(None, None, q"$req.headers.get(${arg.argName.toLit}.ci).map(_.value)"))
           case tpe =>
             Target.pure(
               Param(
@@ -407,14 +432,15 @@ object Http4sServerGenerator {
           }
       )
 
-    case class RenderedRoute(route: Case, methodSig: Decl.Def, supportDefinitions: List[Defn], handlerDefinitions: List[Stat])
+    case class RenderedRoute(route: Case, methodSig: Decl.Def, supportDefinitions: List[Defn], handlerDefinitions: List[Stat], authedRoute: Boolean)
 
     def generateRoute(resourceName: String,
                       basePath: Option[String],
                       route: RouteMeta,
                       tracingFields: Option[TracingField[ScalaLanguage]],
                       parameters: ScalaParameters[ScalaLanguage],
-                      responses: Responses[ScalaLanguage]): Target[Option[RenderedRoute]] =
+                      responses: Responses[ScalaLanguage],
+                      authedRoutes: Boolean): Target[Option[RenderedRoute]] =
       // Generate the pair of the Handler method and the actual call to `complete(...)`
       Target.log.function("generateRoute")(for {
         _ <- Target.log.debug(s"Args: ${resourceName}, ${basePath}, ${route}, ${tracingFields}")
@@ -429,15 +455,18 @@ object Http4sServerGenerator {
         pathArgs   = parameters.pathParams
         qsArgs     = parameters.queryStringParams
         bodyArgs   = parameters.bodyParams
+        authedUser = securityRequirements.flatMap(_ => if (authedRoutes) Some(ScalaParameter.fromParam(param"user: U")) else None)
+
+        req: Term.Ref = securityRequirements.flatMap(_ => if (authedRoutes) Some(q"req.req") else None).getOrElse(q"req")
 
         http4sMethod <- httpMethodToHttp4s(method)
         pathWithQs   <- pathStrToHttp4s(basePath, path, pathArgs)
         (http4sPath, additionalQs) = pathWithQs
         http4sQs   <- qsToHttp4s(operationId)(qsArgs)
-        http4sBody <- bodyToHttp4s(operationId, bodyArgs)
+        http4sBody <- bodyToHttp4s(operationId, bodyArgs, req)
         asyncFormProcessing = formArgs.exists(_.isFile)
         http4sForm         <- if (asyncFormProcessing) asyncFormToHttp4s(operationId)(formArgs) else formToHttp4s(formArgs)
-        http4sHeaders      <- headersToHttp4s(headerArgs)
+        http4sHeaders      <- headersToHttp4s(req)(headerArgs)
         supportDefinitions <- generateSupportDefinitions(route, parameters)
       } yield {
         val (responseCompanionTerm, responseCompanionType) =
@@ -445,23 +474,29 @@ object Http4sServerGenerator {
         val responseType = ServerRawResponse(operation)
           .filter(_ == true)
           .fold[Type](t"$responseCompanionType")(Function.const(t"Response[F]"))
-        val orderedParameters
-          : List[List[ScalaParameter[ScalaLanguage]]] = List((pathArgs ++ qsArgs ++ bodyArgs ++ formArgs ++ headerArgs).toList) ++ tracingFields
+        val orderedParameters: List[List[ScalaParameter[ScalaLanguage]]] = List(
+          (pathArgs ++ qsArgs ++ bodyArgs ++ formArgs ++ headerArgs ++ authedUser).toList
+        ) ++ tracingFields
           .map(_.param)
           .map(List(_))
 
         val entityProcessor = http4sBody
-          .orElse(Some((content: Term) => q"req.decode[UrlForm] { urlForm => $content }").filter(_ => formArgs.nonEmpty && formArgs.forall(!_.isFile)))
-          .orElse(Some((content: Term) => q"req.decode[Multipart[F]] { multipart => $content }").filter(_ => formArgs.nonEmpty))
+          .orElse(Some((content: Term) => q"$req.decode[UrlForm] { urlForm => $content }").filter(_ => formArgs.nonEmpty && formArgs.forall(!_.isFile)))
+          .orElse(Some((content: Term) => q"$req.decode[Multipart[F]] { multipart => $content }").filter(_ => formArgs.nonEmpty))
         val fullRouteMatcher =
           NonEmptyList.fromList(List(additionalQs, http4sQs).flatten).fold(p"$http4sMethod -> $http4sPath") { qs =>
             p"$http4sMethod -> $http4sPath :? ${qs.reduceLeft((a, n) => p"$a :& $n")}"
           }
-        val fullRouteWithTracingMatcher = tracingFields
+        val routeWithTracingMatcher = tracingFields
           .map(_ => p"$fullRouteMatcher ${Term.Name(s"usingFor${operationId.capitalize}")}(traceBuilder)")
           .getOrElse(fullRouteMatcher)
+        val fullRouteWithTracingMatcher =
+          if (securityRequirements.nonEmpty && authedRoutes) p"$routeWithTracingMatcher as user"
+          else routeWithTracingMatcher
+
+        val user = securityRequirements.flatMap(_ => if (authedRoutes) Some(Term.Name("user")) else None).toList
         val handlerCallArgs: List[List[Term]] = List(List(responseCompanionTerm)) ++ List(
-          (pathArgs ++ qsArgs ++ bodyArgs).map(_.paramName) ++ (http4sForm ++ http4sHeaders).map(_.handlerCallArg)
+          (pathArgs ++ qsArgs ++ bodyArgs).map(_.paramName) ++ (http4sForm ++ http4sHeaders).map(_.handlerCallArg) ++ user
         ) ++ tracingFields.map(_.param.paramName).map(List(_))
         val handlerCall = q"handler.${Term.Name(operationId)}(...${handlerCallArgs})"
         val responseExpr = ServerRawResponse(operation)
@@ -478,6 +513,7 @@ object Http4sServerGenerator {
             }
             q"$handlerCall flatMap ${Term.PartialFunction(marshallers)}"
           }(_ => handlerCall)
+
         val matchers = (http4sForm ++ http4sHeaders).flatMap(_.matcher)
         val responseInMatch = NonEmptyList.fromList(matchers).fold(responseExpr) {
           case NonEmptyList((expr, pat), Nil) =>
@@ -513,7 +549,7 @@ object Http4sServerGenerator {
 
         val fullRoute: Case =
           p"""case req @ $fullRouteWithTracingMatcher => 
-             mapRoute($operationId, req, {$routeBody})
+             mapRoute($operationId, $req, {$routeBody})
             """
 
         val respond: List[List[Term.Param]] = List(List(param"respond: $responseCompanionTerm.type"))
@@ -537,9 +573,9 @@ object Http4sServerGenerator {
             )
           )
         )
-
         val consumes = operation.consumes.toList.flatMap(RouteMeta.ContentType.unapply(_))
         val produces = operation.produces.toList.flatMap(RouteMeta.ContentType.unapply(_))
+
         Some(
           RenderedRoute(
             fullRoute,
@@ -547,7 +583,8 @@ object Http4sServerGenerator {
             supportDefinitions ++ generateQueryParamMatchers(operationId, qsArgs) ++ generateCodecs(operationId, bodyArgs, responses, consumes, produces) ++ tracingFields
               .map(_.term)
               .map(generateTracingExtractor(operationId, _)),
-            List.empty //handlerDefinitions
+            List.empty, //handlerDefinitions
+            securityRequirements.isDefined && authedRoutes
           )
         )
       })

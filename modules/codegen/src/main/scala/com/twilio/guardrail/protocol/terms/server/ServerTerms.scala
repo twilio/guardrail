@@ -17,8 +17,9 @@ class ServerTerms[L <: LA, F[_]](implicit I: InjectK[ServerTerm[L, ?], F]) {
                      basePath: Option[String],
                      routes: List[(String, Option[TracingField[L]], RouteMeta, ScalaParameters[L], Responses[L])],
                      protocolElems: List[StrictProtocolElems[L]],
-                     securitySchemes: Map[String, SecurityScheme[L]]): Free[F, RenderedRoutes[L]] =
-    Free.inject[ServerTerm[L, ?], F](GenerateRoutes(tracing, resourceName, basePath, routes, protocolElems, securitySchemes))
+                     securitySchemes: Map[String, SecurityScheme[L]],
+                     authedRoutes: Boolean): Free[F, RenderedRoutes[L]] =
+    Free.inject[ServerTerm[L, ?], F](GenerateRoutes(tracing, resourceName, basePath, routes, protocolElems, securitySchemes, authedRoutes))
   def getExtraRouteParams(tracing: Boolean): Free[F, List[L#MethodParameter]] =
     Free.inject[ServerTerm[L, ?], F](GetExtraRouteParams(tracing))
   def generateResponseDefinitions(operationId: String, responses: Responses[L], protocolElems: List[StrictProtocolElems[L]]): Free[F, List[L#Definition]] =
@@ -28,18 +29,20 @@ class ServerTerms[L <: LA, F[_]](implicit I: InjectK[ServerTerm[L, ?], F]) {
   def renderClass(resourceName: String,
                   handlerName: String,
                   annotations: List[L#Annotation],
-                  combinedRouteTerms: List[L#Term],
+                  routeTerms: List[L#Term],
+                  secureRouteTerms: List[L#Term],
                   extraRouteParams: List[L#MethodParameter],
                   responseDefinitions: List[L#Definition],
                   supportDefinitions: List[L#Definition]): Free[F, List[L#Definition]] =
     Free.inject[ServerTerm[L, ?], F](
-      RenderClass(resourceName, handlerName, annotations, combinedRouteTerms, extraRouteParams, responseDefinitions, supportDefinitions)
+      RenderClass(resourceName, handlerName, annotations, routeTerms, secureRouteTerms, extraRouteParams, responseDefinitions, supportDefinitions)
     )
   def renderHandler(handlerName: String,
                     methodSigs: List[L#MethodDeclaration],
                     handlerDefinitions: List[L#Statement],
-                    responseDefinitions: List[L#Definition]): Free[F, L#Definition] =
-    Free.inject[ServerTerm[L, ?], F](RenderHandler(handlerName, methodSigs, handlerDefinitions, responseDefinitions))
+                    responseDefinitions: List[L#Definition],
+                    securityRequirements: Boolean): Free[F, L#Definition] =
+    Free.inject[ServerTerm[L, ?], F](RenderHandler(handlerName, methodSigs, handlerDefinitions, responseDefinitions, securityRequirements))
   def getExtraImports(tracing: Boolean): Free[F, List[L#Import]] =
     Free.inject[ServerTerm[L, ?], F](GetExtraImports(tracing))
 }

@@ -114,7 +114,7 @@ object AkkaHttpServerGenerator {
           } else Target.pure(None)
         } yield res
 
-      case GenerateRoutes(tracing, resourceName, basePath, routes, protocolElems, securitySchemes) =>
+      case GenerateRoutes(tracing, resourceName, basePath, routes, protocolElems, securitySchemes, authedRoutes) =>
         for {
           renderedRoutes <- routes.traverse {
             case (operationId, tracingFields, sr @ RouteMeta(path, method, operation, securityRequirements), parameters, responses) =>
@@ -129,13 +129,14 @@ object AkkaHttpServerGenerator {
           RenderedRoutes[ScalaLanguage](
             List(combinedRouteTerms),
             List.empty,
+            List.empty,
             methodSigs,
             renderedRoutes.flatMap(_.supportDefinitions),
             renderedRoutes.flatMap(_.handlerDefinitions)
           )
         }
 
-      case RenderHandler(handlerName, methodSigs, handlerDefinitions, responseDefinitions) =>
+      case RenderHandler(handlerName, methodSigs, handlerDefinitions, responseDefinitions, securityRequirements) =>
         for {
           _ <- Target.log.debug(s"renderHandler(${handlerName}, ${methodSigs}")
         } yield q"""
@@ -152,7 +153,7 @@ object AkkaHttpServerGenerator {
           } else Target.pure(List.empty)
         } yield res
 
-      case RenderClass(resourceName, handlerName, _, combinedRouteTerms, extraRouteParams, responseDefinitions, supportDefinitions) =>
+      case RenderClass(resourceName, handlerName, _, routeTerms, secureRouteTerms, extraRouteParams, responseDefinitions, supportDefinitions) =>
         for {
           _ <- Target.log.debug(s"renderClass(${resourceName}, ${handlerName}, <combinedRouteTerms>, ${extraRouteParams})")
           routesParams = List(param"handler: ${Type.Name(handlerName)}") ++ extraRouteParams
@@ -160,7 +161,7 @@ object AkkaHttpServerGenerator {
           object ${Term.Name(resourceName)} {
             ..${supportDefinitions};
             def routes(..${routesParams})(implicit mat: akka.stream.Materializer): Route = {
-              ..${combinedRouteTerms}
+              ..${routeTerms ++ secureRouteTerms}
             }
 
             ..${responseDefinitions}

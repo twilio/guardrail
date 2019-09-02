@@ -14,7 +14,8 @@ case class GenerateRoutes[L <: LA](tracing: Boolean,
                                    basePath: Option[String],
                                    routes: List[(String, Option[TracingField[L]], RouteMeta, ScalaParameters[L], Responses[L])],
                                    protocolElems: List[StrictProtocolElems[L]],
-                                   securitySchemes: Map[String, SecurityScheme[L]])
+                                   securitySchemes: Map[String, SecurityScheme[L]],
+                                   authedRoutes: Boolean)
     extends ServerTerm[L, RenderedRoutes[L]]
 case class GetExtraRouteParams[L <: LA](tracing: Boolean) extends ServerTerm[L, List[L#MethodParameter]]
 case class GenerateResponseDefinitions[L <: LA](operationId: String, responses: Responses[L], protocolElems: List[StrictProtocolElems[L]])
@@ -24,7 +25,8 @@ case class GenerateSupportDefinitions[L <: LA](tracing: Boolean, securitySchemes
 case class RenderClass[L <: LA](className: String,
                                 handlerName: String,
                                 annotations: List[L#Annotation],
-                                combinedRouteTerms: List[L#Term],
+                                routeTerms: List[L#Term],
+                                secureRouteTerms: List[L#Term],
                                 extraRouteParams: List[L#MethodParameter],
                                 responseDefinitions: List[L#Definition],
                                 supportDefinitions: List[L#Definition])
@@ -32,6 +34,7 @@ case class RenderClass[L <: LA](className: String,
 case class RenderHandler[L <: LA](handlerName: String,
                                   methodSigs: List[L#MethodDeclaration],
                                   handlerDefinitions: List[L#Statement],
-                                  responseDefinitions: List[L#Definition])
+                                  responseDefinitions: List[L#Definition],
+                                  securityRequirements: Boolean)
     extends ServerTerm[L, L#Definition]
 case class GetExtraImports[L <: LA](tracing: Boolean) extends ServerTerm[L, List[L#Import]]

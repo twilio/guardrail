@@ -14,7 +14,7 @@ val akkaVersion          = "10.0.14"
 val catsVersion          = "1.6.0"
 val catsEffectVersion    = "1.0.0"
 val circeVersion         = "0.10.1"
-val http4sVersion        = "0.20.0"
+val http4sVersion        = "0.20.10"
 val scalatestVersion     = "3.0.8"
 val javaparserVersion    = "3.7.1"
 val endpointsVersion     = "0.8.0"
@@ -70,6 +70,7 @@ val exampleCases: List[ExampleCase] = List(
   ExampleCase(sampleResource("redaction.yaml"), "redaction"),
   ExampleCase(sampleResource("server1.yaml"), "tracer").args("--tracing"),
   ExampleCase(sampleResource("server2.yaml"), "tracer").args("--tracing"),
+  ExampleCase(sampleResource("server3.yaml"), "tracer").args("--tracing", "--http4sAuthedRoutes"),
   ExampleCase(sampleResource("pathological-parameters.yaml"), "pathological")
 )
 

@@ -288,7 +288,7 @@ object DropwizardServerGenerator {
           Target.pure(Option.empty)
         }
 
-      case GenerateRoutes(tracing, resourceName, basePath, routes, protocolElems, securitySchemes) =>
+      case GenerateRoutes(tracing, resourceName, basePath, routes, protocolElems, securitySchemes, authedRoutes) =>
         for {
           resourceType <- safeParseClassOrInterfaceType(resourceName)
           handlerName = s"${resourceName.replaceAll("Resource$", "")}Handler"
@@ -533,7 +533,7 @@ object DropwizardServerGenerator {
             resourceConstructor
           )
 
-          RenderedRoutes[JavaLanguage](routeMethods, annotations, handlerMethodSigs, supportDefinitions, List.empty)
+          RenderedRoutes[JavaLanguage](routeMethods, List.empty, annotations, handlerMethodSigs, supportDefinitions, List.empty)
         }
 
       case GetExtraRouteParams(tracing) =>
@@ -592,12 +592,12 @@ object DropwizardServerGenerator {
           )
         }
 
-      case RenderClass(className, handlerName, classAnnotations, combinedRouteTerms, extraRouteParams, responseDefinitions, supportDefinitions) =>
+      case RenderClass(className, handlerName, classAnnotations, combinedRouteTerms, _, extraRouteParams, responseDefinitions, supportDefinitions) =>
         safeParseSimpleName(className) >>
           safeParseSimpleName(handlerName) >>
           Target.pure(doRenderClass(className, classAnnotations, supportDefinitions, combinedRouteTerms) :: Nil)
 
-      case RenderHandler(handlerName, methodSigs, handlerDefinitions, responseDefinitions) =>
+      case RenderHandler(handlerName, methodSigs, handlerDefinitions, responseDefinitions, securityRequirements) =>
         val handlerClass = new ClassOrInterfaceDeclaration(util.EnumSet.of(PUBLIC), true, handlerName)
         sortDefinitions(methodSigs ++ responseDefinitions).foreach(handlerClass.addMember)
         Target.pure(handlerClass)

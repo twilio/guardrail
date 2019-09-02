@@ -90,6 +90,8 @@ case class CoreTermInterp[L <: LA](defaultFramework: String,
                   Continue((sofar.copy(dtoPackage = value.trim.split('.').to[List]) :: already, xs))
                 case (sofar :: already, "--import" :: value :: xs) =>
                   Continue((sofar.copy(imports = sofar.imports :+ value) :: already, xs))
+                case (sofar :: already, "--http4sAuthedRoutes" :: xs) =>
+                  Continue((sofar.copy(context = sofar.context.copy(http4sAuthedRoutes = true)) :: already, xs))
                 case (_, unknown) =>
                   debug("Unknown argument") >> Bail(UnknownArguments(unknown))
               }
