@@ -458,12 +458,12 @@ object ScalaGenerator {
           )
         )
       case WrapToObject(name, imports, definitions) =>
-        Target.pure(q"""
+        Target.pure(Option(q"""
              object $name {
                  ..$imports
                  ..$definitions
              }
-           """)
+           """))
     }
   }
 }

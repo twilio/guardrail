@@ -146,7 +146,7 @@ class ScalaTerms[L <: LA, F[_]](implicit I: InjectK[ScalaTerm[L, ?], F]) {
   ): Free[F, List[WriteTree]] =
     Free.inject[ScalaTerm[L, ?], F](WriteServer(pkgPath, pkgName, customImports, frameworkImplicitName, dtoComponents, server))
 
-  def wrapToObject(name: L#TermName, imports: List[L#Import], definitions: List[L#Definition]): Free[F, L#ObjectDefinition] =
+  def wrapToObject(name: L#TermName, imports: List[L#Import], definitions: List[L#Definition]): Free[F, Option[L#ObjectDefinition]] =
     Free.inject[ScalaTerm[L, ?], F](WrapToObject(name, imports, definitions))
 }
 object ScalaTerms {

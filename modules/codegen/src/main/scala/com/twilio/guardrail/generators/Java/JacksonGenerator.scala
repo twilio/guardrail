@@ -878,6 +878,7 @@ object JacksonGenerator {
           "com.fasterxml.jackson.annotation.JsonCreator",
           "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
           "com.fasterxml.jackson.annotation.JsonProperty",
+          "com.fasterxml.jackson.annotation.JsonValue",
           "java.util.Optional"
         ).map(safeParseRawImport) ++ List(
               "java.util.Objects.requireNonNull"

@@ -328,6 +328,7 @@ object JavaGenerator {
               cu.setPackageDeclaration(pkgDecl)
               imports.foreach(cu.addImport)
               staticDefns.extraImports.foreach(cu.addImport)
+              cu.addImport(showerImport)
               val clsCopy = cls.clone()
               staticDefns.definitions.foreach(clsCopy.addMember)
               cu.addType(clsCopy)
@@ -396,7 +397,7 @@ object JavaGenerator {
         } yield handlerTree +: serverTrees
 
       case WrapToObject(_, _, _) =>
-        Target.raiseError("Currently not supported for Java")
+        Target.pure(Option.empty) // Unnecessary in Java, due to static members
     }
   }
 }

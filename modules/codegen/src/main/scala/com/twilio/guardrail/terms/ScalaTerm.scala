@@ -129,4 +129,4 @@ case class WriteServer[L <: LA](
     server: Server[L]
 ) extends ScalaTerm[L, List[WriteTree]]
 
-case class WrapToObject[L <: LA](name: L#TermName, imports: List[L#Import], definitions: List[L#Definition]) extends ScalaTerm[L, L#ObjectDefinition]
+case class WrapToObject[L <: LA](name: L#TermName, imports: List[L#Import], definitions: List[L#Definition]) extends ScalaTerm[L, Option[L#ObjectDefinition]]

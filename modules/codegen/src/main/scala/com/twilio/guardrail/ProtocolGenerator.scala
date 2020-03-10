@@ -346,15 +346,15 @@ object ProtocolGenerator {
               widenClass          <- widenClassDefinition(classDefinition.cls)
               companionTerm       <- pureTermName(classDefinition.name)
               companionDefinition <- wrapToObject(companionTerm, classDefinition.staticDefns.extraImports, classDefinition.staticDefns.definitions)
-              widenCompanion      <- widenObjectDefinition(companionDefinition)
-            } yield List(widenClass, widenCompanion)
+              widenCompanion      <- companionDefinition.traverse(widenObjectDefinition)
+            } yield List(widenClass) ++ widenCompanion
           case enumDefinition: EnumDefinition[L] =>
             for {
               widenClass          <- widenClassDefinition(enumDefinition.cls)
               companionTerm       <- pureTermName(enumDefinition.name)
               companionDefinition <- wrapToObject(companionTerm, enumDefinition.staticDefns.extraImports, enumDefinition.staticDefns.definitions)
-              widenCompanion      <- widenObjectDefinition(companionDefinition)
-            } yield List(widenClass, widenCompanion)
+              widenCompanion      <- companionDefinition.traverse(widenObjectDefinition)
+            } yield List(widenClass) ++ widenCompanion
         }
         nestedClasses.map { v =>
           val finalStaticDefns = staticDefns.copy(definitions = staticDefns.definitions ++ v)
