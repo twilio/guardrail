@@ -764,7 +764,7 @@ object JacksonGenerator {
           )
           .getOrElse(Target.pure(List.empty[(String, Tracker[Schema[_]])]))
 
-      case TransformProperty(clsName, name, property, meta, needCamelSnakeConversion, concreteTypes, isRequired, isCustomType, defaultValue) =>
+      case TransformProperty(clsName, name, property, meta, _, concreteTypes, isRequired, isCustomType, defaultValue) =>
         Target.log.function("transformProperty") {
           val readOnlyKey = Option(name).filter(_ => Option(property.getReadOnly).contains(true))
           val emptyToNull = (property match {
@@ -805,7 +805,7 @@ object JacksonGenerator {
             }
             (tpe, classDep) = tpeClassDep
 
-            argName = if (needCamelSnakeConversion) name.toCamelCase else name
+            argName = name.toCamelCase
             rawType = RawParameterType(Option(property.getType), Option(property.getFormat))
 
             expressionDefaultValue <- defaultValue match {

@@ -20,10 +20,19 @@ object AsyncHttpClientHelpers {
   def asyncHttpClientUtilsSupportDef: Target[SupportDefinition[JavaLanguage]] = loadSupportDefinitionFromString(
     "AsyncHttpClientUtils",
     """
+      import com.fasterxml.jackson.databind.ObjectMapper;
       import org.asynchttpclient.Response;
 
+      import java.io.UnsupportedEncodingException;
+      import java.net.URLDecoder;
       import java.nio.charset.Charset;
+      import java.nio.charset.StandardCharsets;
+      import java.util.ArrayList;
+      import java.util.Arrays;
+      import java.util.HashMap;
+      import java.util.List;
       import java.util.Locale;
+      import java.util.Map;
       import java.util.Optional;
 
       public class AsyncHttpClientUtils {
@@ -44,6 +53,30 @@ object AsyncHttpClientHelpers {
                       return Optional.empty();
                   }
               });
+          }
+
+          public static Map<String, List<String>> parseFormData(final Response response) {
+              final Charset charset = getResponseCharset(response).orElse(StandardCharsets.UTF_8);
+              final Map<String, List<String>> formData = new HashMap<>();
+              Arrays.stream(response.getResponseBody().split("&")).forEach(pair -> {
+                  final String[] parts = pair.split("=", 2);
+                  if (!parts[0].equals("")) {
+                      try {
+                          final String key = URLDecoder.decode(parts[0], "UTF-8");
+                          if (!formData.containsKey(key)) {
+                              formData.put(key, new ArrayList<>());
+                          }
+                          if (parts.length == 2) {
+                              formData.get(key).add(URLDecoder.decode(parts[1], "UTF-8"));
+                          } else if (parts.length == 1) {
+                              formData.get(key).add("true");
+                          }
+                      } catch (final UnsupportedEncodingException e) {
+                          throw new RuntimeException(e.getMessage(), e);
+                      }
+                  }
+              });
+              return formData;
           }
       }
     """

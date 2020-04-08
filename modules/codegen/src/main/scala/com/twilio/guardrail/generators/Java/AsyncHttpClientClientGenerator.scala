@@ -152,6 +152,26 @@ object AsyncHttpClientClientGenerator {
             )
           )
 
+        case Some(UrlencodedFormData) =>
+          Option(
+            new ExpressionStmt(
+              new MethodCallExpr(
+                new NameExpr("builder"),
+                "setFormParams",
+                new NodeList[Expression](
+                  new MethodCallExpr(
+                    new NameExpr("GuardrailJacksonFormUtils"),
+                    "writeUrlEncodedForm",
+                    new NodeList[Expression](
+                      new FieldAccessExpr(new ThisExpr, "objectMapper"),
+                      new NameExpr(param.paramName.asString)
+                    )
+                  )
+                )
+              )
+            )
+          )
+
         case Some(TextContent(_)) =>
           Option(
             new ExpressionStmt(
@@ -169,8 +189,8 @@ object AsyncHttpClientClientGenerator {
           // FIXME: we're hoping that the type is something that AHC already supports
           Option(new ExpressionStmt(wrapSetBody(new NameExpr(param.paramName.asString))))
 
-        case Some(UrlencodedFormData) | Some(MultipartFormData) =>
-          // We shouldn't be here, since we can't have a body param with these content types
+        case Some(MultipartFormData) =>
+          // TODO: add support for POJO-to-multipart
           None
       }
     }
@@ -706,6 +726,31 @@ object AsyncHttpClientClientGenerator {
                                                 AssignExpr.Operator.ASSIGN
                                               )
 
+                                            case UrlencodedFormData =>
+                                              new AssignExpr(
+                                                new VariableDeclarationExpr(new VariableDeclarator(valueType, "result"), finalModifier),
+                                                new MethodCallExpr(
+                                                  new NameExpr("GuardrailJacksonFormUtils"),
+                                                  "readUrlEncodedForm",
+                                                  new NodeList[Expression](
+                                                    new FieldAccessExpr(new ThisExpr, "objectMapper"),
+                                                    new ClassExpr(valueType),
+                                                    new LambdaExpr(
+                                                      new NodeList[Parameter],
+                                                      new ExpressionStmt(
+                                                        new MethodCallExpr(
+                                                          new NameExpr("AsyncHttpClientUtils"),
+                                                          "parseFormData",
+                                                          new NodeList[Expression](new NameExpr("response"))
+                                                        )
+                                                      ),
+                                                      true
+                                                    )
+                                                  )
+                                                ),
+                                                AssignExpr.Operator.ASSIGN
+                                              )
+
                                             case contentType =>
                                               val bodyGetter = valueType match {
                                                 case _ if valueType.isNamed("InputStream") => "getResponseBodyAsStream"
@@ -969,6 +1014,7 @@ object AsyncHttpClientClientGenerator {
           jacksonSupport <- generateJacksonSupportClass()
           (jacksonSupportImports, jacksonSupportClass) = jacksonSupport
           asyncHttpclientUtils <- asyncHttpClientUtilsSupportDef
+          jacksonFormUtils     <- SerializationHelpers.jacksonFormUtils
           shower               <- SerializationHelpers.showerSupportDef
         } yield {
           exceptionClasses.map({
@@ -978,6 +1024,7 @@ object AsyncHttpClientClientGenerator {
             SupportDefinition[JavaLanguage](new Name(ahcSupportClass.getNameAsString), ahcSupportImports, ahcSupportClass),
             SupportDefinition[JavaLanguage](new Name(jacksonSupportClass.getNameAsString), jacksonSupportImports, jacksonSupportClass),
             asyncHttpclientUtils,
+            jacksonFormUtils,
             shower
           )
         }

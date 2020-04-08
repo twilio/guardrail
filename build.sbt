@@ -68,6 +68,7 @@ val exampleCases: List[ExampleCase] = List(
   ExampleCase(sampleResource("custom-header-type.yaml"), "tests.customTypes.customHeader"),
   ExampleCase(sampleResource("date-time.yaml"), "dateTime"),
   ExampleCase(sampleResource("edgecases/defaults.yaml"), "edgecases.defaults"),
+  ExampleCase(sampleResource("form-pojos.yaml"), "formPojos").frameworks(Set("dropwizard")),
   ExampleCase(sampleResource("formData.yaml"), "form"),
   ExampleCase(sampleResource("issues/issue45.yaml"), "issues.issue45"),
   ExampleCase(sampleResource("issues/issue121.yaml"), "issues.issue121"),
@@ -368,7 +369,6 @@ lazy val dropwizardSample = (project in file("modules/sample-dropwizard"))
       "org.glassfish.jersey.test-framework.providers" % "jersey-test-framework-provider-grizzly2" % jerseyVersion % Test
     ),
     unmanagedSourceDirectories in Compile += baseDirectory.value / "target" / "generated",
-    crossPaths := false,  // strangely needed to get the JUnit tests to run at all
     skip in publish := true,
     scalafmtOnCompile := false
   )

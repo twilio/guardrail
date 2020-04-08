@@ -1,0 +1,83 @@
+openapi: 3.0.2
+info:
+  title: Using model objects as form data
+  version: 1.0.0
+paths:
+  /reqBody:
+    post:
+      x-jvm-package: formPojos
+      operationId: doFormReq
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/FormBody"
+      responses:
+        200:
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                $ref: "#/components/schemas/FormBody"
+  /optBody:
+    post:
+      x-jvm-package: formPojos
+      operationId: doFormOpt
+      requestBody:
+        required: false
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/FormBody"
+      responses:
+        200:
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                $ref: "#/components/schemas/FormBody"
+components:
+  schemas:
+    SomeEnum:
+      type: string
+      enum:
+        - some-value
+        - another-value
+        - yet-another-value
+    FormBody:
+      type: object
+      required:
+        - ReqString
+        - ReqInt
+        - ReqBoolean
+        - ReqDateTime
+        - ReqEnum
+        - ReqList
+      properties:
+        ReqString:
+          type: string
+        ReqInt:
+          type: integer
+          format: int32
+        ReqBoolean:
+          type: boolean
+        ReqDateTime:
+          type: string
+          format: date-time
+        ReqEnum:
+          $ref: "#/components/schemas/SomeEnum"
+        ReqList:
+          type: array
+          items:
+            type: string
+        OptString:
+          type: string
+        OptInt:
+          type: integer
+          format: int32
+        OptBoolean:
+          type: boolean
+        OptDateTime:
+          type: string
+          format: date-time
+        OptEnum:
+          $ref: "#/components/schemas/SomeEnum"
