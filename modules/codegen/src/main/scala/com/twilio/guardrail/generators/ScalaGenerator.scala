@@ -18,8 +18,27 @@ import scala.concurrent.Future
 import scala.meta._
 
 object ScalaGenerator {
-  private def sourceToBytes(source: Source): Future[Array[Byte]] = Future {
-    (GENERATED_CODE_COMMENT + source.syntax).getBytes(StandardCharsets.UTF_8)
+  private def sourceToBytes(destPath: Path, source: Source): Future[Array[Byte]] = Future {
+    (formatSource(destPath, GENERATED_CODE_COMMENT + source.syntax)).getBytes(StandardCharsets.UTF_8)
+  }
+
+  private lazy val scalafmtConfPath: Path = {
+    import java.nio.file.Files
+    import scala.io.Source
+    import scala.util.Try
+    val confStream = getClass.getClassLoader.getResourceAsStream("scalafmt.conf")
+    val confFile   = Files.createTempFile("scalafmt.", ".conf")
+    sys.addShutdownHook(Try(Files.delete(confFile)))
+    val source = Source.fromInputStream(confStream, "UTF-8")
+    Files.write(confFile, source.mkString.getBytes(StandardCharsets.UTF_8))
+    source.close()
+    confFile
+  }
+
+  private def formatSource(destPath: Path, source: String): String = {
+    import org.scalafmt.interfaces.Scalafmt
+    val scalafmt = Scalafmt.create(getClass.getClassLoader)
+    scalafmt.format(scalafmtConfPath, destPath, source)
   }
 
   object ScalaInterp extends LanguageTerms[ScalaLanguage, Target] {
@@ -277,7 +296,8 @@ object ScalaGenerator {
 
             }
           """
-      Target.pure(Some(WriteTree(pkgPath.resolve("Implicits.scala"), sourceToBytes(implicits))))
+      val path          = pkgPath.resolve("Implicits.scala")
+      Target.pure(Some(WriteTree(path, sourceToBytes(path, implicits))))
     }
     def renderFrameworkImplicits(
         pkgPath: Path,
@@ -306,7 +326,8 @@ object ScalaGenerator {
 
             $frameworkImplicits
           """
-      Target.pure(WriteTree(pkgPath.resolve(s"${frameworkImplicitName.value}.scala"), sourceToBytes(frameworkImplicitsFile)))
+      val path                   = pkgPath.resolve(s"${frameworkImplicitName.value}.scala")
+      Target.pure(WriteTree(path, sourceToBytes(path, frameworkImplicitsFile)))
     }
     def renderFrameworkDefinitions(
         pkgPath: Path,
@@ -323,7 +344,8 @@ object ScalaGenerator {
 
             ..$frameworkDefinitions
           """
-      Target.pure(WriteTree(pkgPath.resolve(s"${frameworkDefinitionsName.value}.scala"), sourceToBytes(frameworkDefinitionsFile)))
+      val path                     = pkgPath.resolve(s"${frameworkDefinitionsName.value}.scala")
+      Target.pure(WriteTree(path, sourceToBytes(path, frameworkDefinitionsFile)))
     }
 
     def writePackageObject(
@@ -351,9 +373,12 @@ object ScalaGenerator {
               val List(Pat.Var(mirror)) = stat.pats
               stat.copy(rhs = q"$companion.$mirror")
             }
+            val path = dtoPackagePath.resolve("package.scala")
             WriteTree(
-              dtoPackagePath.resolve("package.scala"),
-              sourceToBytes(source"""
+              path,
+              sourceToBytes(
+                path,
+                source"""
                 package $dtoPkg
 
                 ..${customImports ++ packageObjectImports ++ protocolImports :+ pkgImplicitsImport}
@@ -365,7 +390,8 @@ object ScalaGenerator {
                 package object ${Term.Name(dtoComponents.last)} {
                   ..${(mirroredImplicits ++ statements ++ extraTypes).to[List]}
                 }
-                """)
+                """
+              )
             )
           }
       })
@@ -384,51 +410,63 @@ object ScalaGenerator {
         .map(name => q"import ${buildPkgTerm(List("_root_") ++ pkgName ++ List(name))}._")
       Target.pure(elem match {
         case EnumDefinition(_, _, _, _, cls, staticDefns) =>
+          val path = resolveFile(outputPath)(dtoComponents).resolve(s"${cls.name.value}.scala")
           (
             List(
               WriteTree(
-                resolveFile(outputPath)(dtoComponents).resolve(s"${cls.name.value}.scala"),
-                sourceToBytes(source"""
+                path,
+                sourceToBytes(
+                  path,
+                  source"""
               package ${buildPkgTerm(dtoComponents)}
                 ..$imports
                 ..$implicitImports
                 $cls
                 ${companionForStaticDefns(staticDefns)}
-              """)
+              """
+                )
               )
             ),
             List.empty[Stat]
           )
         case ClassDefinition(_, _, _, cls, staticDefns, _) =>
+          val path = resolveFile(outputPath)(dtoComponents).resolve(s"${cls.name.value}.scala");
           (
             List(
               WriteTree(
-                resolveFile(outputPath)(dtoComponents).resolve(s"${cls.name.value}.scala"),
-                sourceToBytes(source"""
+                path,
+                sourceToBytes(
+                  path,
+                  source"""
               package ${buildPkgTerm(dtoComponents)}
                 ..$imports
                 ..$implicitImports
                 $cls
                 ${companionForStaticDefns(staticDefns)}
-              """)
+              """
+                )
               )
             ),
             List.empty[Stat]
           )
         case ADT(name, tpe, _, trt, staticDefns) =>
           val polyImports: Import = q"import cats.syntax.either._"
+          val path                = resolveFile(outputPath)(dtoComponents).resolve(s"$name.scala")
           (
             List(
               WriteTree(
-                resolveFile(outputPath)(dtoComponents).resolve(s"$name.scala"),
-                sourceToBytes(source"""
+                path,
+                sourceToBytes(
+                  path,
+                  source"""
                     package ${buildPkgTerm(dtoComponents)}
                     ..$imports
                     ..$implicitImports
                     $polyImports
                     $trt
                     ${companionForStaticDefns(staticDefns)}
-                  """)
+                  """
+                )
               )
             ),
             List.empty[Stat]
@@ -447,11 +485,14 @@ object ScalaGenerator {
         _client: Client[ScalaLanguage]
     ): Target[List[WriteTree]] = {
       val Client(pkg, clientName, imports, staticDefns, client, responseDefinitions) = _client
+      val path                                                                       = resolveFile(pkgPath)(pkg :+ s"$clientName.scala")
       Target.pure(
         List(
           WriteTree(
-            resolveFile(pkgPath)(pkg :+ (s"$clientName.scala")),
-            sourceToBytes(source"""
+            path,
+            sourceToBytes(
+              path,
+              source"""
               package ${buildPkgTerm(pkgName ++ pkg)}
               import ${buildPkgTerm(List("_root_") ++ pkgName ++ List("Implicits"))}._
               ..${frameworkImplicitNames.map(name => q"import ${buildPkgTerm(List("_root_") ++ pkgName)}.$name._")}
@@ -461,7 +502,8 @@ object ScalaGenerator {
               ${companionForStaticDefns(staticDefns)};
               ..${client.toList.map(_.merge)};
               ..$responseDefinitions
-              """)
+              """
+            )
           )
         )
       )
@@ -475,11 +517,14 @@ object ScalaGenerator {
         server: Server[ScalaLanguage]
     ): Target[List[WriteTree]] = {
       val Server(pkg, extraImports, handlerDefinition, serverDefinitions) = server
+      val path                                                            = resolveFile(pkgPath)(pkg.toList :+ "Routes.scala")
       Target.pure(
         List(
           WriteTree(
-            resolveFile(pkgPath)(pkg.toList :+ "Routes.scala"),
-            sourceToBytes(source"""
+            path,
+            sourceToBytes(
+              path,
+              source"""
               package ${buildPkgTerm(pkgName ++ pkg.toList)}
               ..$extraImports
               import ${buildPkgTerm(List("_root_") ++ pkgName ++ List("Implicits"))}._
@@ -488,7 +533,8 @@ object ScalaGenerator {
               ..$customImports
               $handlerDefinition
               ..$serverDefinitions
-              """)
+              """
+            )
           )
         )
       )

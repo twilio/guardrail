@@ -289,6 +289,7 @@ lazy val codegen = (project in file("modules/codegen"))
       codegenSettings,
     libraryDependencies ++= testDependencies ++ Seq(
       "org.scalameta"               %% "scalameta"                    % "4.3.20",
+      "org.scalameta"               %% "scalafmt-dynamic"             % "2.6.4",
       "com.github.javaparser"       % "javaparser-symbol-solver-core" % javaparserVersion,
       "org.eclipse.jdt"             % "org.eclipse.jdt.core"          % "3.22.0",
       "org.eclipse.platform"        % "org.eclipse.equinox.app"       % "1.4.500",
