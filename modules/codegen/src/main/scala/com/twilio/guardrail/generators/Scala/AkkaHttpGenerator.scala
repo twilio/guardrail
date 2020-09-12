@@ -400,7 +400,7 @@ object AkkaHttpGenerator {
         case "410" => Target.pure((410, q"Gone"))
         case "411" => Target.pure((411, q"LengthRequired"))
         case "412" => Target.pure((412, q"PreconditionFailed"))
-        case "413" => Target.pure((413, q"RequestEntityTooLarge"))
+        case "413" => Target.pure((413, q"PayloadTooLarge"))
         case "414" => Target.pure((414, q"RequestUriTooLong"))
         case "415" => Target.pure((415, q"UnsupportedMediaType"))
         case "416" => Target.pure((416, q"RequestedRangeNotSatisfiable"))

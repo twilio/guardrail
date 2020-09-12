@@ -57,14 +57,14 @@ class Issue143 extends AnyFunSuite with TestImplicits with Matchers with EitherV
     // (fails in TravisCI, passes in OSX; may be related to filesystem or
     //  other system particulars)
     // req ~> route ~> check {
-    //   status should equal(StatusCodes.RequestEntityTooLarge)
+    //   status should equal(StatusCodes.PayloadTooLarge)
     //   tempDest.exists() should equal(false)
     // }
 
     // The following workaround seems to work:
 
     val resp = Route.toFunction(route).apply(req).futureValue
-    resp.status should equal(StatusCodes.RequestEntityTooLarge)
+    resp.status should equal(StatusCodes.PayloadTooLarge)
     tempDest.exists() should equal(false)
   }
 }
