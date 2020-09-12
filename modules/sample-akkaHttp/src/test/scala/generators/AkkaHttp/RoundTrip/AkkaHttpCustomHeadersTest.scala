@@ -28,7 +28,7 @@ class AkkaHttpCustomHeadersTest extends AnyFlatSpec with Matchers with ScalaFutu
   it should "round-trip encoded values" in {
     implicit val as  = ActorSystem()
     implicit val mat = ActorMaterializer()
-    val client = Client.httpClient(Route.asyncHandler(Resource.routes(new Handler {
+    val client = Client.httpClient(Route.toFunction(Resource.routes(new Handler {
       def getFoo(respond: Resource.GetFooResponse.type)(
           header: String,
           longHeader: Long,

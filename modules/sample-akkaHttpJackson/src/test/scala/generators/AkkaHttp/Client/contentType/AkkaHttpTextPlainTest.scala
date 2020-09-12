@@ -40,7 +40,7 @@ class AkkaHttpTextPlainTest
         }
       })
     }
-    val client: HttpRequest => Future[HttpResponse] = Route.asyncHandler(route)
+    val client: HttpRequest => Future[HttpResponse] = Route.toFunction(route)
     val fooClient                                   = FooClient.httpClient(client)
     new EitherTValuable(fooClient.doFoo("sample")).rightValue.futureValue shouldBe DoFooResponse.Created
   }
@@ -55,7 +55,7 @@ class AkkaHttpTextPlainTest
         }
       })
     }
-    val client: HttpRequest => Future[HttpResponse] = Route.asyncHandler(route)
+    val client: HttpRequest => Future[HttpResponse] = Route.toFunction(route)
     val fooClient                                   = FooClient.httpClient(client)
     new EitherTValuable(fooClient.doBar(Some("sample"))).rightValue.futureValue shouldBe DoBarResponse.Created
   }
@@ -78,7 +78,7 @@ class AkkaHttpTextPlainTest
       ): scala.concurrent.Future[tests.contentTypes.textPlain.server.akkaHttpJackson.foo.FooResource.DoBazResponse] = ???
     })
 
-    val client: HttpRequest => Future[HttpResponse] = Route.asyncHandler(route)
+    val client: HttpRequest => Future[HttpResponse] = Route.toFunction(route)
     val fooClient                                   = FooClient.httpClient(client)
     new EitherTValuable(fooClient.doFoo("sample")).rightValue.futureValue shouldBe DoFooResponse.Created
   }
@@ -101,7 +101,7 @@ class AkkaHttpTextPlainTest
       ): scala.concurrent.Future[tests.contentTypes.textPlain.server.akkaHttpJackson.foo.FooResource.DoBazResponse] = ???
     })
 
-    val client: HttpRequest => Future[HttpResponse] = Route.asyncHandler(route)
+    val client: HttpRequest => Future[HttpResponse] = Route.toFunction(route)
     val fooClient                                   = FooClient.httpClient(client)
     new EitherTValuable(fooClient.doBar(Some("sample"))).rightValue.futureValue shouldBe DoBarResponse.Created
   }
@@ -124,7 +124,7 @@ class AkkaHttpTextPlainTest
       ): scala.concurrent.Future[tests.contentTypes.textPlain.server.akkaHttpJackson.foo.FooResource.DoBazResponse] = ???
     })
 
-    val client: HttpRequest => Future[HttpResponse] = Route.asyncHandler(route)
+    val client: HttpRequest => Future[HttpResponse] = Route.toFunction(route)
     val fooClient                                   = FooClient.httpClient(client)
     new EitherTValuable(fooClient.doBar(None)).rightValue.futureValue shouldBe DoBarResponse.Created
   }

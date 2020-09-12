@@ -201,7 +201,7 @@ class Issue315Suite extends AnyFunSuite with Matchers with EitherValues with Sca
       import _root_.issues.issue315.legacylegacy.server.akkaHttp.definitions._
       import _root_.issues.issue315.legacylegacy.server.akkaHttp.support.Presence
       import _root_.issues.issue315.legacylegacy.server.akkaHttp.{ Handler, Resource }
-      Route.asyncHandler(Resource.routes(new Handler {
+      Route.toFunction(Resource.routes(new Handler {
         def postTest(respond: Resource.PostTestResponse.type)(body: TestObject) =
           body match {
             case TestObject("foo", None, Presence.Absent, Presence.Absent, None) => respond.OK.pure[Future]
@@ -214,7 +214,7 @@ class Issue315Suite extends AnyFunSuite with Matchers with EitherValues with Sca
       import _root_.issues.issue315.legacyoptional.server.akkaHttp.definitions._
       import _root_.issues.issue315.legacyoptional.server.akkaHttp.support.Presence
       import _root_.issues.issue315.legacyoptional.server.akkaHttp.{ Handler, Resource }
-      Route.asyncHandler(Resource.routes(new Handler {
+      Route.toFunction(Resource.routes(new Handler {
         def postTest(respond: Resource.PostTestResponse.type)(body: TestObject) =
           body match {
             case TestObject("foo", None, Presence.Absent, Presence.Absent, None) => respond.OK.pure[Future]
@@ -227,7 +227,7 @@ class Issue315Suite extends AnyFunSuite with Matchers with EitherValues with Sca
       import _root_.issues.issue315.legacyrequiredNullable.server.akkaHttp.definitions._
       import _root_.issues.issue315.legacyrequiredNullable.server.akkaHttp.support.Presence
       import _root_.issues.issue315.legacyrequiredNullable.server.akkaHttp.{ Handler, Resource }
-      Route.asyncHandler(Resource.routes(new Handler {
+      Route.toFunction(Resource.routes(new Handler {
         def postTest(respond: Resource.PostTestResponse.type)(body: TestObject) =
           body match {
             case TestObject("foo", None, Presence.Absent, Presence.Absent, None) => respond.OK.pure[Future]
@@ -240,7 +240,7 @@ class Issue315Suite extends AnyFunSuite with Matchers with EitherValues with Sca
       import _root_.issues.issue315.optionallegacy.server.akkaHttp.definitions._
       import _root_.issues.issue315.optionallegacy.server.akkaHttp.support.Presence
       import _root_.issues.issue315.optionallegacy.server.akkaHttp.{ Handler, Resource }
-      Route.asyncHandler(Resource.routes(new Handler {
+      Route.toFunction(Resource.routes(new Handler {
         def postTest(respond: Resource.PostTestResponse.type)(body: TestObject) =
           body match {
             case TestObject("foo", None, Presence.Absent, Presence.Absent, None) => respond.OK.pure[Future]
@@ -253,7 +253,7 @@ class Issue315Suite extends AnyFunSuite with Matchers with EitherValues with Sca
       import _root_.issues.issue315.optionaloptional.server.akkaHttp.definitions._
       import _root_.issues.issue315.optionaloptional.server.akkaHttp.support.Presence
       import _root_.issues.issue315.optionaloptional.server.akkaHttp.{ Handler, Resource }
-      Route.asyncHandler(Resource.routes(new Handler {
+      Route.toFunction(Resource.routes(new Handler {
         def postTest(respond: Resource.PostTestResponse.type)(body: TestObject) =
           body match {
             case TestObject("foo", None, Presence.Absent, Presence.Absent, Presence.Absent) => respond.OK.pure[Future]
@@ -266,7 +266,7 @@ class Issue315Suite extends AnyFunSuite with Matchers with EitherValues with Sca
       import _root_.issues.issue315.optionalrequiredNullable.server.akkaHttp.definitions._
       import _root_.issues.issue315.optionalrequiredNullable.server.akkaHttp.support.Presence
       import _root_.issues.issue315.optionalrequiredNullable.server.akkaHttp.{ Handler, Resource }
-      Route.asyncHandler(Resource.routes(new Handler {
+      Route.toFunction(Resource.routes(new Handler {
         def postTest(respond: Resource.PostTestResponse.type)(body: TestObject) =
           body match {
             case TestObject("foo", None, Presence.Absent, Presence.Absent, None) => respond.OK.pure[Future]
@@ -279,7 +279,7 @@ class Issue315Suite extends AnyFunSuite with Matchers with EitherValues with Sca
       import _root_.issues.issue315.requiredNullablelegacy.server.akkaHttp.definitions._
       import _root_.issues.issue315.requiredNullablelegacy.server.akkaHttp.support.Presence
       import _root_.issues.issue315.requiredNullablelegacy.server.akkaHttp.{ Handler, Resource }
-      Route.asyncHandler(Resource.routes(new Handler {
+      Route.toFunction(Resource.routes(new Handler {
         def postTest(respond: Resource.PostTestResponse.type)(body: TestObject) =
           body match {
             case TestObject("foo", None, Presence.Absent, Presence.Absent, None) => respond.OK.pure[Future]
@@ -292,7 +292,7 @@ class Issue315Suite extends AnyFunSuite with Matchers with EitherValues with Sca
       import _root_.issues.issue315.requiredNullableoptional.server.akkaHttp.definitions._
       import _root_.issues.issue315.requiredNullableoptional.server.akkaHttp.support.Presence
       import _root_.issues.issue315.requiredNullableoptional.server.akkaHttp.{ Handler, Resource }
-      Route.asyncHandler(Resource.routes(new Handler {
+      Route.toFunction(Resource.routes(new Handler {
         def postTest(respond: Resource.PostTestResponse.type)(body: TestObject) =
           body match {
             case TestObject("foo", None, Presence.Absent, Presence.Absent, None) => respond.OK.pure[Future]
@@ -305,7 +305,7 @@ class Issue315Suite extends AnyFunSuite with Matchers with EitherValues with Sca
       import _root_.issues.issue315.requiredNullablerequiredNullable.server.akkaHttp.definitions._
       import _root_.issues.issue315.requiredNullablerequiredNullable.server.akkaHttp.support.Presence
       import _root_.issues.issue315.requiredNullablerequiredNullable.server.akkaHttp.{ Handler, Resource }
-      Route.asyncHandler(Resource.routes(new Handler {
+      Route.toFunction(Resource.routes(new Handler {
         def postTest(respond: Resource.PostTestResponse.type)(body: TestObject) =
           body match {
             case TestObject("foo", None, Presence.Absent, Presence.Absent, None) => respond.OK.pure[Future]
