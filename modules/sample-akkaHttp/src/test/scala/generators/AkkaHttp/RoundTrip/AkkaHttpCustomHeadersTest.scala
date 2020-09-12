@@ -2,7 +2,6 @@ package generators.AkkaHttp.RoundTrip
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.{ Route }
-import akka.stream.ActorMaterializer
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.SpanSugar._
 import org.scalatest.EitherValues
@@ -26,8 +25,7 @@ class AkkaHttpCustomHeadersTest extends AnyFlatSpec with Matchers with ScalaFutu
   }
 
   it should "round-trip encoded values" in {
-    implicit val as  = ActorSystem()
-    implicit val mat = ActorMaterializer()
+    implicit val as = ActorSystem()
     val client = Client.httpClient(Route.toFunction(Resource.routes(new Handler {
       def getFoo(respond: Resource.GetFooResponse.type)(
           header: String,
