@@ -58,14 +58,14 @@ class Issue143 extends AnyFunSuite with Matchers with EitherValues with ScalaFut
     // (fails in TravisCI, passes in OSX; may be related to filesystem or
     //  other system particulars)
     // req ~> route ~> check {
-    //   status should equal(StatusCodes.RequestEntityTooLarge)
+    //   status should equal(StatusCodes.PayloadTooLarge)
     //   tempDest.exists() should equal(false)
     // }
 
     // The following workaround seems to work:
 
-    val resp = Route.asyncHandler(route).apply(req).futureValue
-    resp.status should equal(StatusCodes.RequestEntityTooLarge)
+    val resp = Route.toFunction(route).apply(req).futureValue
+    resp.status should equal(StatusCodes.PayloadTooLarge)
     tempDest.exists() should equal(false)
   }
 }

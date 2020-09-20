@@ -202,7 +202,7 @@ class Issue315Suite extends AnyFunSuite with TestImplicits with Matchers with Ei
       import _root_.issues.issue315.legacylegacy.server.akkaHttpJackson.definitions._
       import _root_.issues.issue315.legacylegacy.server.akkaHttpJackson.support.Presence
       import _root_.issues.issue315.legacylegacy.server.akkaHttpJackson.{ Handler, Resource }
-      Route.asyncHandler(Resource.routes(new Handler {
+      Route.toFunction(Resource.routes(new Handler {
         def postTest(respond: Resource.PostTestResponse.type)(body: TestObject) =
           body match {
             case TestObject("foo", None, Presence.Absent, Presence.Absent, None) => respond.OK.pure[Future]
@@ -215,7 +215,7 @@ class Issue315Suite extends AnyFunSuite with TestImplicits with Matchers with Ei
       import _root_.issues.issue315.legacyoptional.server.akkaHttpJackson.definitions._
       import _root_.issues.issue315.legacyoptional.server.akkaHttpJackson.support.Presence
       import _root_.issues.issue315.legacyoptional.server.akkaHttpJackson.{ Handler, Resource }
-      Route.asyncHandler(Resource.routes(new Handler {
+      Route.toFunction(Resource.routes(new Handler {
         def postTest(respond: Resource.PostTestResponse.type)(body: TestObject) =
           body match {
             case TestObject("foo", None, Presence.Absent, Presence.Absent, None) => respond.OK.pure[Future]
@@ -228,7 +228,7 @@ class Issue315Suite extends AnyFunSuite with TestImplicits with Matchers with Ei
       import _root_.issues.issue315.legacyrequiredNullable.server.akkaHttpJackson.definitions._
       import _root_.issues.issue315.legacyrequiredNullable.server.akkaHttpJackson.support.Presence
       import _root_.issues.issue315.legacyrequiredNullable.server.akkaHttpJackson.{ Handler, Resource }
-      Route.asyncHandler(Resource.routes(new Handler {
+      Route.toFunction(Resource.routes(new Handler {
         def postTest(respond: Resource.PostTestResponse.type)(body: TestObject) =
           body match {
             case TestObject("foo", None, Presence.Absent, Presence.Absent, None) => respond.OK.pure[Future]
@@ -241,7 +241,7 @@ class Issue315Suite extends AnyFunSuite with TestImplicits with Matchers with Ei
       import _root_.issues.issue315.optionallegacy.server.akkaHttpJackson.definitions._
       import _root_.issues.issue315.optionallegacy.server.akkaHttpJackson.support.Presence
       import _root_.issues.issue315.optionallegacy.server.akkaHttpJackson.{ Handler, Resource }
-      Route.asyncHandler(Resource.routes(new Handler {
+      Route.toFunction(Resource.routes(new Handler {
         def postTest(respond: Resource.PostTestResponse.type)(body: TestObject) =
           body match {
             case TestObject("foo", None, Presence.Absent, Presence.Absent, None) => respond.OK.pure[Future]
@@ -254,7 +254,7 @@ class Issue315Suite extends AnyFunSuite with TestImplicits with Matchers with Ei
       import _root_.issues.issue315.optionaloptional.server.akkaHttpJackson.definitions._
       import _root_.issues.issue315.optionaloptional.server.akkaHttpJackson.support.Presence
       import _root_.issues.issue315.optionaloptional.server.akkaHttpJackson.{ Handler, Resource }
-      Route.asyncHandler(Resource.routes(new Handler {
+      Route.toFunction(Resource.routes(new Handler {
         def postTest(respond: Resource.PostTestResponse.type)(body: TestObject) =
           body match {
             case TestObject("foo", None, Presence.Absent, Presence.Absent, Presence.Absent) => respond.OK.pure[Future]
@@ -267,7 +267,7 @@ class Issue315Suite extends AnyFunSuite with TestImplicits with Matchers with Ei
       import _root_.issues.issue315.optionalrequiredNullable.server.akkaHttpJackson.definitions._
       import _root_.issues.issue315.optionalrequiredNullable.server.akkaHttpJackson.support.Presence
       import _root_.issues.issue315.optionalrequiredNullable.server.akkaHttpJackson.{ Handler, Resource }
-      Route.asyncHandler(Resource.routes(new Handler {
+      Route.toFunction(Resource.routes(new Handler {
         def postTest(respond: Resource.PostTestResponse.type)(body: TestObject) =
           body match {
             case TestObject("foo", None, Presence.Absent, Presence.Absent, None) => respond.OK.pure[Future]
@@ -280,7 +280,7 @@ class Issue315Suite extends AnyFunSuite with TestImplicits with Matchers with Ei
       import _root_.issues.issue315.requiredNullablelegacy.server.akkaHttpJackson.definitions._
       import _root_.issues.issue315.requiredNullablelegacy.server.akkaHttpJackson.support.Presence
       import _root_.issues.issue315.requiredNullablelegacy.server.akkaHttpJackson.{ Handler, Resource }
-      Route.asyncHandler(Resource.routes(new Handler {
+      Route.toFunction(Resource.routes(new Handler {
         def postTest(respond: Resource.PostTestResponse.type)(body: TestObject) =
           body match {
             case TestObject("foo", None, Presence.Absent, Presence.Absent, None) => respond.OK.pure[Future]
@@ -293,7 +293,7 @@ class Issue315Suite extends AnyFunSuite with TestImplicits with Matchers with Ei
       import _root_.issues.issue315.requiredNullableoptional.server.akkaHttpJackson.definitions._
       import _root_.issues.issue315.requiredNullableoptional.server.akkaHttpJackson.support.Presence
       import _root_.issues.issue315.requiredNullableoptional.server.akkaHttpJackson.{ Handler, Resource }
-      Route.asyncHandler(Resource.routes(new Handler {
+      Route.toFunction(Resource.routes(new Handler {
         def postTest(respond: Resource.PostTestResponse.type)(body: TestObject) =
           body match {
             case TestObject("foo", None, Presence.Absent, Presence.Absent, None) => respond.OK.pure[Future]
@@ -306,7 +306,7 @@ class Issue315Suite extends AnyFunSuite with TestImplicits with Matchers with Ei
       import _root_.issues.issue315.requiredNullablerequiredNullable.server.akkaHttpJackson.definitions._
       import _root_.issues.issue315.requiredNullablerequiredNullable.server.akkaHttpJackson.support.Presence
       import _root_.issues.issue315.requiredNullablerequiredNullable.server.akkaHttpJackson.{ Handler, Resource }
-      Route.asyncHandler(Resource.routes(new Handler {
+      Route.toFunction(Resource.routes(new Handler {
         def postTest(respond: Resource.PostTestResponse.type)(body: TestObject) =
           body match {
             case TestObject("foo", None, Presence.Absent, Presence.Absent, None) => respond.OK.pure[Future]

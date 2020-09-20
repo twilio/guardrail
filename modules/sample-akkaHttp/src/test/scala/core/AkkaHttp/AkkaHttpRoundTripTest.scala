@@ -44,7 +44,7 @@ class AkkaHttpRoundTripTest extends AnyFunSuite with Matchers with EitherValues 
   val petStatus: Option[String]    = Some("pending")
 
   test("round-trip: definition query, unit response") {
-    val httpClient = Route.asyncHandler(PetResource.routes(new PetHandler {
+    val httpClient = Route.toFunction(PetResource.routes(new PetHandler {
       def addPet(respond: PetResource.AddPetResponse.type)(body: sdefs.Pet): Future[PetResource.AddPetResponse] =
         body match {
           case sdefs.Pet(
@@ -99,7 +99,7 @@ class AkkaHttpRoundTripTest extends AnyFunSuite with Matchers with EitherValues 
   }
 
   test("round-trip: enum query, Vector of definition response") {
-    val httpClient = Route.asyncHandler(PetResource.routes(new PetHandler {
+    val httpClient = Route.toFunction(PetResource.routes(new PetHandler {
       def findPetsByStatusEnum(
           respond: PetResource.FindPetsByStatusEnumResponse.type
       )(_status: sdefs.PetStatus): Future[PetResource.FindPetsByStatusEnumResponse] =
@@ -164,7 +164,7 @@ class AkkaHttpRoundTripTest extends AnyFunSuite with Matchers with EitherValues 
   }
 
   test("round-trip: 404 response") {
-    val httpClient = Route.asyncHandler(PetResource.routes(new PetHandler {
+    val httpClient = Route.toFunction(PetResource.routes(new PetHandler {
       def findPetsByStatus(respond: PetResource.FindPetsByStatusResponse.type)(status: Iterable[String]): Future[PetResource.FindPetsByStatusResponse] =
         Future.successful(respond.NotFound)
 
@@ -203,7 +203,7 @@ class AkkaHttpRoundTripTest extends AnyFunSuite with Matchers with EitherValues 
   test("round-trip: Raw type parameters") {
     val petId: Long    = 123L
     val apiKey: String = "foobar"
-    val httpClient = Route.asyncHandler(PetResource.routes(new PetHandler {
+    val httpClient = Route.toFunction(PetResource.routes(new PetHandler {
       def deletePet(respond: PetResource.DeletePetResponse.type)(
           _petId: Long,
           includeChildren: Option[Boolean],
@@ -251,7 +251,7 @@ class AkkaHttpRoundTripTest extends AnyFunSuite with Matchers with EitherValues 
   test("round-trip: File uploads") {
     val petId: Long    = 123L
     val apiKey: String = "foobar"
-    val httpClient = Route.asyncHandler(PetResource.routes(new PetHandler {
+    val httpClient = Route.toFunction(PetResource.routes(new PetHandler {
       def addPet(respond: PetResource.AddPetResponse.type)(body: sdefs.Pet) = ???
       def deletePet(
           respond: PetResource.DeletePetResponse.type

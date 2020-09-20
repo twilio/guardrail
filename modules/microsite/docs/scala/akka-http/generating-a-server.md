@@ -100,7 +100,7 @@ val userRoutes: Route = UserResource.routes(new UserHandler {
     }
   }
 })
-val userHttpClient: HttpRequest => Future[HttpResponse] = Route.asyncHandler(userRoutes)
+val userHttpClient: HttpRequest => Future[HttpResponse] = Route.toFunction(userRoutes)
 val userClient: UserClient = UserClient.httpCLient(userHttpClient)
 val getUserResponse: EitherT[Future, Either[Throwable, HttpResponse], User] = userClient.getUserByName("foo").map(_.fold(user => user))
 val user: User = getUserResponse.value.futureValue.right.value // Unwraps `User(id=Some(1234L), username=Some("foo"))` using scalatest's `ScalaFutures` and `EitherValues` unwrappers.

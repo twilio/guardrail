@@ -69,7 +69,7 @@ object Http4sHelper {
         case t"Option[$_]" => q"""
                   decodeBy(MediaType.text.plain) { msg =>
                     msg.contentLength.filter(_ > 0).fold[DecodeResult[F, $tpe]](DecodeResult.success(None)){ _ =>
-                      DecodeResult.success(decodeString(msg)).flatMap { str =>
+                      DecodeResult.success(decodeText(msg)).flatMap { str =>
                         Json.fromString(str).as[$tpe]
                           .fold(failure =>
                             DecodeResult.failure(InvalidMessageBodyFailure(s"Could not decode response: $$str", Some(failure))),

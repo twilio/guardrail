@@ -2,7 +2,6 @@ package generators.AkkaHttp.RoundTrip
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Route
-import akka.stream.ActorMaterializer
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
@@ -29,9 +28,8 @@ class AkkaHttpCustomHeadersTest extends AnyFlatSpec with TestImplicits with Matc
   }
 
   it should "round-trip encoded values" in {
-    implicit val as  = ActorSystem()
-    implicit val mat = ActorMaterializer()
-    val client = Client.httpClient(Route.asyncHandler(Resource.routes(new Handler {
+    implicit val as = ActorSystem()
+    val client = Client.httpClient(Route.toFunction(Resource.routes(new Handler {
       def getFoo(respond: Resource.GetFooResponse.type)(
           header: String,
           longHeader: Long,

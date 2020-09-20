@@ -30,7 +30,7 @@ class AkkaHttpTextPlainTest extends AnyFunSuite with Matchers with EitherValues 
         }
       })
     }
-    val client: HttpRequest => Future[HttpResponse] = Route.asyncHandler(route)
+    val client: HttpRequest => Future[HttpResponse] = Route.toFunction(route)
     val fooClient                                   = FooClient.httpClient(client)
     fooClient.doFoo("sample").rightValue.futureValue shouldBe DoFooResponse.Created("response")
   }
@@ -45,7 +45,7 @@ class AkkaHttpTextPlainTest extends AnyFunSuite with Matchers with EitherValues 
         }
       })
     }
-    val client: HttpRequest => Future[HttpResponse] = Route.asyncHandler(route)
+    val client: HttpRequest => Future[HttpResponse] = Route.toFunction(route)
     val fooClient                                   = FooClient.httpClient(client)
     fooClient.doBar(Some("sample")).rightValue.futureValue shouldBe DoBarResponse.Created("response")
   }
@@ -68,7 +68,7 @@ class AkkaHttpTextPlainTest extends AnyFunSuite with Matchers with EitherValues 
       ): scala.concurrent.Future[tests.contentTypes.textPlain.server.akkaHttp.foo.FooResource.DoBazResponse] = ???
     })
 
-    val client: HttpRequest => Future[HttpResponse] = Route.asyncHandler(route)
+    val client: HttpRequest => Future[HttpResponse] = Route.toFunction(route)
     val fooClient                                   = FooClient.httpClient(client)
     fooClient.doFoo("sample").rightValue.futureValue shouldBe DoFooResponse.Created("response")
   }
@@ -91,7 +91,7 @@ class AkkaHttpTextPlainTest extends AnyFunSuite with Matchers with EitherValues 
       ): scala.concurrent.Future[tests.contentTypes.textPlain.server.akkaHttp.foo.FooResource.DoBazResponse] = ???
     })
 
-    val client: HttpRequest => Future[HttpResponse] = Route.asyncHandler(route)
+    val client: HttpRequest => Future[HttpResponse] = Route.toFunction(route)
     val fooClient                                   = FooClient.httpClient(client)
     fooClient.doBar(Some("sample")).rightValue.futureValue shouldBe DoBarResponse.Created("response")
   }
@@ -114,7 +114,7 @@ class AkkaHttpTextPlainTest extends AnyFunSuite with Matchers with EitherValues 
       ): scala.concurrent.Future[tests.contentTypes.textPlain.server.akkaHttp.foo.FooResource.DoBazResponse] = ???
     })
 
-    val client: HttpRequest => Future[HttpResponse] = Route.asyncHandler(route)
+    val client: HttpRequest => Future[HttpResponse] = Route.toFunction(route)
     val fooClient                                   = FooClient.httpClient(client)
     fooClient.doBar(None).rightValue.futureValue shouldBe DoBarResponse.Created("response")
   }

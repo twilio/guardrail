@@ -62,7 +62,7 @@ class AkkaHttpFullTracerTest
 
   test("full tracer: passing headers through multiple levels") {
     // Establish the "Address" server
-    val server2: HttpRequest => Future[HttpResponse] = Route.asyncHandler(
+    val server2: HttpRequest => Future[HttpResponse] = Route.toFunction(
       AddressesResource.routes(
         new AddressesHandler {
           def getAddress(respond: AddressesResource.GetAddressResponse.type)(id: String)(traceBuilder: TraceBuilder) =
@@ -77,7 +77,7 @@ class AkkaHttpFullTracerTest
     )
 
     // Establish the "User" server
-    val server1: HttpRequest => Future[HttpResponse] = Route.asyncHandler(
+    val server1: HttpRequest => Future[HttpResponse] = Route.toFunction(
       UsersResource.routes(
         new UsersHandler {
           // ... using the "Address" server explicitly in the addressesClient
