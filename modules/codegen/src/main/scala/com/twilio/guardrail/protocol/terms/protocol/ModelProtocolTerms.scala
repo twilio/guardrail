@@ -22,6 +22,7 @@ abstract class ModelProtocolTerms[L <: LA, F[_]](implicit Cl: CollectionsLibTerm
       prop: Schema[_],
       meta: ResolvedType[L],
       requirement: PropertyRequirement,
+      constraints: Set[PropertyConstraint],
       isCustomType: Boolean,
       defaultValue: Option[L#Term]
   ): F[ProtocolParameter[L]]
@@ -49,7 +50,8 @@ abstract class ModelProtocolTerms[L <: LA, F[_]](implicit Cl: CollectionsLibTerm
           List[String],
           List[String],
           List[PropMeta[L]]
-      ) => (String, String, Schema[_], ResolvedType[L], PropertyRequirement, Boolean, Option[L#Term]) => F[ProtocolParameter[L]] = transformProperty _,
+      ) => (String, String, Schema[_], ResolvedType[L], PropertyRequirement, Set[PropertyConstraint], Boolean, Option[L#Term]) => F[ProtocolParameter[L]] =
+        transformProperty _,
       newRenderDTOClass: (String, List[String], List[ProtocolParameter[L]], List[SuperClass[L]]) => F[L#ClassDefinition] = renderDTOClass _,
       newDecodeModel: (String, List[String], List[String], List[ProtocolParameter[L]], List[SuperClass[L]]) => F[Option[L#ValueDefinition]] = decodeModel _,
       newEncodeModel: (String, List[String], List[ProtocolParameter[L]], List[SuperClass[L]]) => F[Option[L#ValueDefinition]] = encodeModel _,
@@ -68,6 +70,7 @@ abstract class ModelProtocolTerms[L <: LA, F[_]](implicit Cl: CollectionsLibTerm
         prop: Schema[_],
         meta: ResolvedType[L],
         requirement: PropertyRequirement,
+        constraints: Set[PropertyConstraint],
         isCustomType: Boolean,
         defaultValue: Option[L#Term]
     ) =
@@ -77,6 +80,7 @@ abstract class ModelProtocolTerms[L <: LA, F[_]](implicit Cl: CollectionsLibTerm
         prop,
         meta,
         requirement,
+        constraints,
         isCustomType,
         defaultValue
       )

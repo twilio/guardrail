@@ -17,3 +17,9 @@ object PropertyRequirement {
 
   final case class Configured(encoder: OptionalRequirement, decoder: OptionalRequirement) extends PropertyRequirement
 }
+
+sealed trait PropertyConstraint
+object PropertyConstraint {
+  case class Maximum(value: BigDecimal) extends PropertyConstraint
+  case class Minimum(value: BigDecimal) extends PropertyConstraint
+}

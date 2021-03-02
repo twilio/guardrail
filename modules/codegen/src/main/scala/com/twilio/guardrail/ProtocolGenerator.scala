@@ -7,16 +7,18 @@ import cats.data.NonEmptyList
 import cats.syntax.all._
 import com.twilio.guardrail.core.{ Mappish, Tracker }
 import com.twilio.guardrail.core.implicits._
-import com.twilio.guardrail.generators.RawParameterType
+import com.twilio.guardrail.generators.{ RawParameterName, RawParameterType }
 import com.twilio.guardrail.languages.LA
+import com.twilio.guardrail.protocol.terms.protocol.PropertyConstraint.{ Maximum, Minimum }
 import com.twilio.guardrail.protocol.terms.protocol._
 import com.twilio.guardrail.terms.framework.FrameworkTerms
-import com.twilio.guardrail.terms.{ CollectionsLibTerms, LanguageTerms, SwaggerTerms }
+import com.twilio.guardrail.terms.CollectionsLibTerms
 import cats.Foldable
 import com.twilio.guardrail.extract.Default
+import com.twilio.guardrail.terms.{ LanguageTerms, SwaggerTerms }
+
 import scala.collection.JavaConverters._
 import scala.language.higherKinds
-import com.twilio.guardrail.generators.RawParameterName
 
 case class ProtocolDefinitions[L <: LA](
     elems: List[StrictProtocolElems[L]],
@@ -43,7 +45,8 @@ case class ProtocolParameter[L <: LA](
     emptyToNull: EmptyToNullBehaviour,
     dataRedaction: RedactionBehaviour,
     propertyRequirement: PropertyRequirement,
-    defaultValue: Option[L#Term]
+    defaultValue: Option[L#Term],
+    constraints: Set[PropertyConstraint]
 )
 
 case class Discriminator[L <: LA](propertyName: String, mapping: Map[String, ProtocolElems[L]])
@@ -166,6 +169,13 @@ object ProtocolGenerator {
       case (false, Some(true))  => PropertyRequirement.OptionalNullable
     }).get
 
+  def getPropertyConstraints(schema: Tracker[Schema[_]]): Set[PropertyConstraint] = {
+    val minimum = schema.downField("minimum", _.getMinimum).get.map(Minimum(_))
+    val maximum = schema.downField("maximum", _.getMaximum).get.map(Maximum(_))
+
+    (minimum ++ maximum).toSet
+  }
+
   /**
     * Handle polymorphic model
     */
@@ -211,6 +221,7 @@ object ProtocolGenerator {
           for {
             typeName <- formatTypeName(name).map(formattedName => NonEmptyList.of(hierarchy.name, formattedName))
             propertyRequirement = getPropertyRequirement(prop, requiredFields.contains(name), defaultPropertyRequirement)
+            propertyConstraints = getPropertyConstraints(prop)
             customType   <- SwaggerUtil.customTypeName(prop)
             resolvedType <- SwaggerUtil.propMeta[L, F](prop)
             defValue     <- defaultValue(typeName, prop.get, propertyRequirement, definitions.map(_.map(_.get)))
@@ -221,6 +232,7 @@ object ProtocolGenerator {
               prop.get,
               resolvedType,
               propertyRequirement,
+              propertyConstraints,
               customType.isDefined,
               defValue
             )
@@ -454,6 +466,7 @@ object ProtocolGenerator {
             resolvedType          <- SwaggerUtil.propMetaWithName(tpe, schema)
             customType            <- SwaggerUtil.customTypeName(schema.get)
             propertyRequirement = getPropertyRequirement(schema, requiredFields.contains(name), defaultPropertyRequirement)
+            propertyConstraints = getPropertyConstraints(schema)
             defValue  <- defaultValue(typeName, schema.get, propertyRequirement, definitions.map(_.map(_.get)))
             fieldName <- formatFieldName(name)
             parameter <- transformProperty(getClsName(name).last, dtoPackage, supportPackage, concreteTypes)(
@@ -462,6 +475,7 @@ object ProtocolGenerator {
               schema.get,
               resolvedType,
               propertyRequirement,
+              propertyConstraints,
               customType.isDefined,
               defValue
             )
@@ -499,7 +513,8 @@ object ProtocolGenerator {
                 emptyToNull,
                 redactionBehaviour,
                 a.propertyRequirement,
-                newDefaultValue
+                newDefaultValue,
+                a.constraints
               )
               mergedParameter :: s.filter(_.name != a.name)
             }
@@ -529,7 +544,8 @@ object ProtocolGenerator {
               param.emptyToNull,
               param.dataRedaction,
               param.propertyRequirement,
-              param.defaultValue
+              param.defaultValue,
+              param.constraints
             )
           } else {
             param.pure[F]

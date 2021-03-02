@@ -37,6 +37,19 @@ import com.twilio.guardrail.protocol.terms.protocol._
 import com.twilio.guardrail.terms.CollectionsLibTerms
 import com.twilio.guardrail.terms.collections.CollectionsAbstraction
 import scala.collection.JavaConverters._
+import com.github.javaparser.StaticJavaParser
+import com.github.javaparser.ast.{ Node, NodeList }
+import com.github.javaparser.ast.stmt._
+import com.github.javaparser.ast.Modifier.Keyword.{ FINAL, PRIVATE, PROTECTED, PUBLIC }
+import com.github.javaparser.ast.Modifier._
+import com.github.javaparser.ast.body._
+import com.github.javaparser.ast.expr._
+import java.math.BigInteger
+import java.util.Locale
+
+import com.twilio.guardrail.protocol.terms.protocol.PropertyConstraint.{ Maximum, Minimum }
+
+import scala.util.Try
 
 object JacksonGenerator {
   private val BUILDER_TYPE        = StaticJavaParser.parseClassOrInterfaceType("Builder")
@@ -50,7 +63,8 @@ object JacksonGenerator {
       parameterType: Type,
       rawType: RawParameterType,
       defaultValue: Option[Expression],
-      dataRedacted: RedactionBehaviour
+      dataRedacted: RedactionBehaviour,
+      constraints: Set[PropertyConstraint]
   )
 
   // returns a tuple of (requiredTerms, optionalTerms)
@@ -74,7 +88,16 @@ object JacksonGenerator {
         }
         val defaultValue = defaultValueToExpression(param.defaultValue)
 
-        ParameterTerm(param.name.value, param.term.getNameAsString, param.term.getType.unbox, parameterType, param.rawType, defaultValue, param.dataRedaction)
+        ParameterTerm(
+          param.name.value,
+          param.term.getNameAsString,
+          param.term.getType.unbox,
+          parameterType,
+          param.rawType,
+          defaultValue,
+          param.dataRedaction,
+          param.constraints
+        )
       })
       .partition(
         pt => !pt.fieldType.isOptionalType && pt.defaultValue.isEmpty
@@ -446,9 +469,13 @@ object JacksonGenerator {
         _ = addParents(dtoClass, parentOpt)
 
         _ = terms.foreach({
-          case ParameterTerm(propertyName, parameterName, fieldType, _, _, _, _) =>
+          case ParameterTerm(propertyName, parameterName, fieldType, _, _, _, _, constraints) =>
             val field: FieldDeclaration = dtoClass.addField(fieldType, parameterName, PRIVATE, FINAL)
             field.addSingleMemberAnnotation("JsonProperty", new StringLiteralExpr(propertyName))
+            for (constraint <- constraints) yield (constraint) match {
+              case Minimum(value) => field.addSingleMemberAnnotation("Min", new IntegerLiteralExpr(value.toString))
+              case Maximum(value) => field.addSingleMemberAnnotation("Max", new IntegerLiteralExpr(value.toString))
+            }
         })
 
         primaryConstructor = dtoClass
@@ -457,7 +484,7 @@ object JacksonGenerator {
           .setParameters(
             new NodeList(
               withoutDiscriminators(parentTerms ++ terms).map({
-                case ParameterTerm(propertyName, parameterName, fieldType, _, _, _, _) =>
+                case ParameterTerm(propertyName, parameterName, fieldType, _, _, _, _, _) =>
                   new Parameter(new NodeList(finalModifier), fieldType, new SimpleName(parameterName))
                     .addAnnotation(new SingleMemberAnnotationExpr(new Name("JsonProperty"), new StringLiteralExpr(propertyName)))
               }): _*
@@ -596,11 +623,11 @@ object JacksonGenerator {
         builderClass = new ClassOrInterfaceDeclaration(new NodeList(publicModifier, staticModifier), false, "Builder")
 
         _ = withoutDiscriminators(parentRequiredTerms ++ requiredTerms).foreach({
-          case ParameterTerm(_, parameterName, fieldType, _, _, _, _) =>
+          case ParameterTerm(_, parameterName, fieldType, _, _, _, _, _) =>
             builderClass.addField(fieldType, parameterName, PRIVATE)
         })
         _ <- withoutDiscriminators(parentOptionalTerms ++ optionalTerms).traverse({
-          case ParameterTerm(_, parameterName, fieldType, _, _, defaultValue, _) =>
+          case ParameterTerm(_, parameterName, fieldType, _, _, defaultValue, _, _) =>
             for {
               initializer <- defaultValue.fold[Target[Expression]](
                 Cl.emptyOptionalTerm().flatMap(_.toExpression)
@@ -621,7 +648,7 @@ object JacksonGenerator {
           .setParameters(
             new NodeList(
               withoutDiscriminators(parentRequiredTerms ++ requiredTerms).map({
-                case ParameterTerm(_, parameterName, _, parameterType, _, _, _) =>
+                case ParameterTerm(_, parameterName, _, parameterType, _, _, _, _) =>
                   new Parameter(new NodeList(finalModifier), parameterType, new SimpleName(parameterName))
               }): _*
             )
@@ -630,7 +657,7 @@ object JacksonGenerator {
             new BlockStmt(
               new NodeList(
                 withoutDiscriminators(parentRequiredTerms ++ requiredTerms).map({
-                  case ParameterTerm(_, parameterName, fieldType, _, _, _, _) =>
+                  case ParameterTerm(_, parameterName, fieldType, _, _, _, _, _) =>
                     new ExpressionStmt(
                       new AssignExpr(
                         new FieldAccessExpr(new ThisExpr, parameterName),
@@ -653,7 +680,7 @@ object JacksonGenerator {
             new BlockStmt(
               withoutDiscriminators(parentTerms ++ terms)
                 .map({
-                  case term @ ParameterTerm(_, parameterName, _, _, _, _, _) =>
+                  case term @ ParameterTerm(_, parameterName, _, _, _, _, _, _) =>
                     new ExpressionStmt(
                       new AssignExpr(
                         new FieldAccessExpr(new ThisExpr, parameterName),
@@ -668,7 +695,7 @@ object JacksonGenerator {
 
         // TODO: leave out with${name}() if readOnlyKey?
         _ <- withoutDiscriminators(parentTerms ++ terms).traverse({
-          case ParameterTerm(_, parameterName, fieldType, parameterType, _, _, _) =>
+          case ParameterTerm(_, parameterName, fieldType, parameterType, _, _, _, _) =>
             val methodName = s"with${parameterName.unescapeIdentifier.capitalize}"
             for {
               fieldInitializer <- (fieldType, parameterType) match {
@@ -808,6 +835,7 @@ object JacksonGenerator {
         property: Schema[_],
         meta: SwaggerUtil.ResolvedType[JavaLanguage],
         requirement: PropertyRequirement,
+        constraints: Set[PropertyConstraint],
         isCustomType: Boolean,
         defaultValue: Option[com.github.javaparser.ast.Node]
     ) =
@@ -877,7 +905,8 @@ object JacksonGenerator {
           emptyToNull,
           dataRedaction,
           requirement,
-          finalDefaultValue
+          finalDefaultValue,
+          constraints
         )
       }
 
@@ -942,7 +971,9 @@ object JacksonGenerator {
         "com.fasterxml.jackson.annotation.JsonCreator",
         "com.fasterxml.jackson.annotation.JsonIgnoreProperties",
         "com.fasterxml.jackson.annotation.JsonProperty",
-        "com.fasterxml.jackson.annotation.JsonValue"
+        "com.fasterxml.jackson.annotation.JsonValue",
+        "javax.validation.constraints.Max",
+        "javax.validation.constraints.Min"
       ).map(safeParseRawImport) ++ List(
             "java.util.Objects.requireNonNull"
           ).map(safeParseRawStaticImport)).sequence

@@ -152,6 +152,7 @@ object CirceProtocolGenerator {
         property: Schema[_],
         meta: ResolvedType[ScalaLanguage],
         requirement: PropertyRequirement,
+        constraints: Set[PropertyConstraint],
         isCustomType: Boolean,
         defaultValue: Option[scala.meta.Term]
     ): Target[ProtocolParameter[ScalaLanguage]] =
@@ -214,7 +215,8 @@ object CirceProtocolGenerator {
           emptyToNull,
           dataRedaction,
           requirement,
-          finalDefaultValue
+          finalDefaultValue,
+          constraints
         )
       }
 
