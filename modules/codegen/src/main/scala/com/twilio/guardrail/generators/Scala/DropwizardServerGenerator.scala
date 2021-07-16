@@ -4,11 +4,11 @@ import cats.Monad
 import cats.data.NonEmptyList
 import cats.syntax.all._
 import com.twilio.guardrail.core.Tracker
-import com.twilio.guardrail.generators.{ LanguageParameter, RawParameterName }
 import com.twilio.guardrail.generators.helpers.DropwizardHelpers._
+import com.twilio.guardrail.generators.{ LanguageParameter, RawParameterName }
 import com.twilio.guardrail.languages.ScalaLanguage
-import com.twilio.guardrail.protocol.terms.server.{ GenerateRouteMeta, ServerTerms }
 import com.twilio.guardrail.protocol.terms._
+import com.twilio.guardrail.protocol.terms.server.{ GenerateRouteMeta, ServerTerms }
 import com.twilio.guardrail.shims.OperationExt
 import com.twilio.guardrail.terms.{ CollectionsLibTerms, RouteMeta, SecurityScheme }
 import com.twilio.guardrail.{ CustomExtractionField, RenderedRoutes, StrictProtocolElems, SupportDefinition, Target, TracingField }
@@ -156,7 +156,8 @@ object DropwizardServerGenerator {
           q"import scala.annotation.meta.{field, param}",
           q"import scala.concurrent.{ExecutionContext, Future}",
           q"import scala.util.{Failure, Success}",
-          q"import ${buildTermSelect(supportPackage)}.GuardrailJerseySupport"
+          q"import ${buildTermSelect(supportPackage)}.GuardrailJerseySupport",
+          q"import ${buildTermSelect(supportPackage)}.RequestTimeout"
         )
       )
 
@@ -227,6 +228,17 @@ object DropwizardServerGenerator {
                 }
               }
              """
+            ),
+            insideDefinitions = false
+          ),
+          SupportDefinition[ScalaLanguage](
+            q"RequestTimeout",
+            List(
+              q"import java.time.Duration",
+              q"import javax.ws.rs.core.Response"
+            ),
+            List(
+              q"""case class RequestTimeout(timeout: Duration, timeoutResponse: () => Response)"""
             ),
             insideDefinitions = false
           )
@@ -381,7 +393,11 @@ object DropwizardServerGenerator {
 
             val routeMethod = q"""
              ..$methodAnnotations
-             def ${Term.Name(methodName)}(..$methodParams): Unit =
+             def ${Term.Name(methodName)}(..$methodParams): Unit = {
+               ${Term.Name(s"${methodName}RequestTimeout")}.foreach({ requestTimeout =>
+                 asyncResponse.setTimeout(requestTimeout.timeout.toNanos, java.util.concurrent.TimeUnit.NANOSECONDS)
+                 asyncResponse.setTimeoutHandler(_ => if (!asyncResponse.isDone) asyncResponse.resume(requestTimeout.timeoutResponse()))
+               })
                this.handler.$methodNameTerm($responseClsTerm)(..$handlerArgs).onComplete({
                  case scala.util.Success(result) =>
                    val responseBuilder = Response.status(result.statusCode)
@@ -391,12 +407,15 @@ object DropwizardServerGenerator {
                    logger.error("{} threw an exception ({}): {}", ${Lit.String(s"$resourceName.$methodName")}, err.getClass.getName, err.getMessage, err)
                    asyncResponse.resume(Response.status(Status.INTERNAL_SERVER_ERROR).build())
                })
+             }
            """
+
+            val timeoutMethod = q"""protected def ${Term.Name(s"${methodName}RequestTimeout")}: Option[RequestTimeout] = this.requestTimeout"""
 
             val handlerRetTypeParam = t"$resourceNameTerm.$responseClsType"
             val handlerMethodSig    = q"def $methodNameTerm($respondParam)(..$handlerParams): scala.concurrent.Future[$handlerRetTypeParam]"
 
-            (routeMethod: Stat, handlerMethodSig)
+            (List[Stat](routeMethod, timeoutMethod), handlerMethodSig)
         })
         .unzip
 
@@ -408,7 +427,7 @@ object DropwizardServerGenerator {
 
       Target.pure(
         RenderedRoutes[ScalaLanguage](
-          routeMethods,
+          routeMethods.flatten,
           List(classPathAnnotation),
           handlerMethodSigs,
           supportDefinitions,
@@ -438,18 +457,33 @@ object DropwizardServerGenerator {
         supportDefinitions: List[Defn],
         customExtraction: Boolean
     ): Target[List[Defn]] = {
-      val routeParams = param"handler: ${Type.Name(handlerName)}" +: extraRouteParams
+      val resourceType = Type.Name(resourceName)
+      val handlerType  = Type.Name(handlerName)
+      val handlerParam = param"handler: $handlerType"
+      val routeParams = List(
+          handlerParam,
+          param"requestTimeout: Option[RequestTimeout]"
+        ) ++ extraRouteParams
+      val applyRouteParams = List(
+          handlerParam,
+          param"requestTimeout: RequestTimeout"
+        ) ++ extraRouteParams
+      val compatRouteParams = handlerParam +: extraRouteParams
       Target.pure(
         List(
           q"""
              ..$annotations
-             class ${Type.Name(resourceName)}(..$routeParams)(implicit ec: ExecutionContext) {
+             class $resourceType(..$routeParams)(implicit ec: ExecutionContext) {
+               @deprecated(${Lit.String(s"Use $resourceName.apply($handlerName)")})
+               def this(..$compatRouteParams)(implicit ec: ExecutionContext) = this(handler, None)(ec)
                ..$supportDefinitions
                ..$combinedRouteTerms
              }
            """,
           q"""
              object ${Term.Name(resourceName)} {
+               def apply(..$applyRouteParams)(implicit ec: ExecutionContext) = new $resourceType(handler, Option(requestTimeout))(ec)
+               def apply(..$compatRouteParams)(implicit ec: ExecutionContext) = new $resourceType(handler, None)(ec)
                ..$responseDefinitions
              }
            """

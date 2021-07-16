@@ -2,9 +2,11 @@ package com.twilio.guardrail.generators.helpers
 
 import cats.data.NonEmptyList
 import cats.syntax.all._
+import com.twilio.guardrail.{ SupportDefinition, Target }
 import com.twilio.guardrail.core.Tracker
 import com.twilio.guardrail.generators.LanguageParameters
-import com.twilio.guardrail.languages.LA
+import com.twilio.guardrail.generators.syntax.Java.loadSupportDefinitionFromString
+import com.twilio.guardrail.languages.{ JavaLanguage, LA }
 import com.twilio.guardrail.protocol.terms._
 import io.swagger.v3.oas.models.Operation
 
@@ -82,4 +84,33 @@ object DropwizardHelpers {
     val (initialHeads, initialRest) = getHeads(splitRoutePaths)
     checkMatch(List.empty, initialHeads, initialRest)
   }
+
+  def requestTimeoutSupportDef: Target[SupportDefinition[JavaLanguage]] = loadSupportDefinitionFromString(
+    "RequestTimeout",
+    s"""
+      import java.time.Duration;
+      import java.util.function.Supplier;
+      import javax.ws.rs.core.Response;
+
+      import static java.util.Objects.requireNonNull;
+
+      public class RequestTimeout {
+          private final Duration timeout;
+          private final Supplier<Response> timeoutResponse;
+
+          public RequestTimeout(final Duration timeout, final Supplier<Response> timeoutResponse) {
+              this.timeout = requireNonNull(timeout, "RequestTimeout.timeout is required");
+              this.timeoutResponse = requireNonNull(timeoutResponse, "RequestTimeout.timeoutResponse is required");
+          }
+
+          public Duration getTimeout() {
+              return this.timeout;
+          }
+
+          public Response getTimeoutResponse() {
+              return this.timeoutResponse.get();
+          }
+      }
+    """
+  )
 }
