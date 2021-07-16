@@ -18,7 +18,8 @@ object ScalaCollectionsGenerator {
     def liftSomeTerm(value: Term): Target[Term]     = Target.pure(q"Some($value)")
     def emptyOptionalTerm(): Target[Term]           = Target.pure(q"None")
 
-    def arrayType(format: Option[String]): Target[Type] = Target.pure(t"Iterable[String]")
+    def liftArrayType(value: Type, customTpe: Option[Type]): Target[Type] =
+      Target.pure(t"${customTpe.getOrElse(t"Iterable")}[$value]")
     def liftVectorType(value: Type, customTpe: Option[Type]): Target[Type] =
       Target.pure(t"${customTpe.getOrElse(t"Vector")}[$value]")
     def liftVectorTerm(value: Term): Target[Term] = Target.pure(q"Vector($value)")

@@ -2,15 +2,19 @@ package swagger
 
 import java.util
 
+import cats.data.NonEmptyList
 import com.twilio.guardrail.extract.VendorExtension
+import com.twilio.guardrail.generators.Scala.AkkaHttp
+import com.twilio.guardrail.{ ClassDefinition, Client, Clients, CodegenTarget, Context, ProtocolDefinitions }
 import io.swagger.parser.OpenAPIParser
 import io.swagger.v3.parser.core.models.ParseOptions
-
-import scala.collection.JavaConverters._
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
+import support.SwaggerSpecRunner
 
-class VendorExtensionTest extends AnyFunSuite with Matchers {
+import scala.collection.JavaConverters._
+
+class VendorExtensionTest extends AnyFunSuite with Matchers with SwaggerSpecRunner {
 
   val spec: String = s"""
     |swagger: '2.0'
@@ -79,5 +83,73 @@ class VendorExtensionTest extends AnyFunSuite with Matchers {
           .extract[String]("x-scala-garbage") should equal(Some("io.swagger.models.properties.Property"))
       } ()
     } ()
+  }
+
+  private val itemsOverrideSpec =
+    s"""
+       |openapi: 3.0.1
+       |info:
+       |  title: Foo
+       |  version: 0.0.0
+       |components:
+       |  schemas:
+       |    Foo:
+       |      type: object
+       |      required:
+       |        - arrayprop
+       |      properties:
+       |        arrayprop:
+       |          type: array
+       |          items:
+       |            type: string
+       |            x-jvm-type: SomethingElse
+       |paths:
+       |  /foo:
+       |    get:
+       |      operationId: getFoo
+       |      parameters:
+       |        - name: arrayquery
+       |          in: query
+       |          required: true
+       |          schema:
+       |            type: array
+       |            items:
+       |              type: string
+       |              x-jvm-type: SomethingElse
+       |        - name: regularquery
+       |          in: query
+       |          required: true
+       |          schema:
+       |            type: string
+       |            x-jvm-type: SomethingElse
+       |      requestBody:
+       |        required: true
+       |        content:
+       |          application/json:
+       |            schema:
+       |              required:
+       |                - arrayprop
+       |              properties:
+       |                arrayprop:
+       |                  type: array
+       |                  items:
+       |                    type: string
+       |                    x-jvm-type: SomethingElse
+       |      responses:
+       |        200: {}
+       |""".stripMargin
+
+  test("CustomTypeName works on array items") {
+    val (
+      ProtocolDefinitions(ClassDefinition("Foo", _, _, protoCls, _, _) :: Nil, _, _, _, _),
+      Clients(Client(_, _, _, _, NonEmptyList(Right(clientCls), Nil), _) :: Nil, _),
+      _
+    ) =
+      runSwaggerSpec(itemsOverrideSpec)(Context.empty, AkkaHttp, targets = NonEmptyList.one(CodegenTarget.Client))
+
+    protoCls.syntax shouldBe """case class Foo(arrayprop: Vector[SomethingElse] = Vector.empty)"""
+    clientCls.syntax should include(
+      "def getFoo(arrayquery: Iterable[SomethingElse], regularquery: SomethingElse, arrayprop: Iterable[SomethingElse], headers: List[HttpHeader] = Nil)"
+    )
   }
 }

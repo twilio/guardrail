@@ -14,7 +14,7 @@ abstract class CollectionsLibTerms[L <: LA, F[_]] {
   def liftSomeTerm(value: L#Term): F[L#Term]
   def emptyOptionalTerm(): F[L#Term]
 
-  def arrayType(format: Option[String]): F[L#Type]
+  def liftArrayType(value: L#Type, customTpe: Option[L#Type]): F[L#Type]
   def liftVectorType(value: L#Type, customTpe: Option[L#Type]): F[L#Type]
   def liftVectorTerm(value: L#Term): F[L#Term]
   def emptyArray(): F[L#Term]
@@ -31,7 +31,7 @@ abstract class CollectionsLibTerms[L <: LA, F[_]] {
       newLiftOptionalTerm: L#Term => F[L#Term] = liftOptionalTerm,
       newLiftSomeTerm: L#Term => F[L#Term] = liftSomeTerm,
       newEmptyOptionalTerm: () => F[L#Term] = emptyOptionalTerm _,
-      newArrayType: Option[String] => F[L#Type] = arrayType,
+      newLiftArrayType: (L#Type, Option[L#Type]) => F[L#Type] = liftArrayType,
       newLiftVectorType: (L#Type, Option[L#Type]) => F[L#Type] = liftVectorType,
       newLiftVectorTerm: L#Term => F[L#Term] = liftVectorTerm,
       newEmptyArray: () => F[L#Term] = emptyArray _,
@@ -46,7 +46,7 @@ abstract class CollectionsLibTerms[L <: LA, F[_]] {
     def liftOptionalTerm(value: L#Term)                                 = newLiftOptionalTerm(value)
     def liftSomeTerm(value: L#Term)                                     = newLiftSomeTerm(value)
     def emptyOptionalTerm()                                             = newEmptyOptionalTerm()
-    def arrayType(format: Option[String])                               = newArrayType(format)
+    def liftArrayType(value: L#Type, customTpe: Option[L#Type])         = newLiftArrayType(value, customTpe)
     def liftVectorType(value: L#Type, customTpe: Option[L#Type])        = newLiftVectorType(value, customTpe)
     def liftVectorTerm(value: L#Term)                                   = newLiftVectorTerm(value)
     def emptyArray()                                                    = newEmptyArray()

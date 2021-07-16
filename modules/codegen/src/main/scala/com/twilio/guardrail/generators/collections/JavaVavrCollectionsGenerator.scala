@@ -30,18 +30,21 @@ object JavaVavrCollectionsGenerator {
 
     override def emptyOptionalTerm(): Target[Node] = buildMethodCall("io.vavr.control.Option.none")
 
-    override def arrayType(format: Option[String]): Target[Type] =
-      safeParseClassOrInterfaceType("io.vavr.collection.Vector").map(_.setTypeArguments(new NodeList[Type](STRING_TYPE)))
-
-    override def liftVectorType(value: Type, customTpe: Option[Type]): Target[Type] =
+    private def liftSimpleType(value: Type, tpeStr: String, customTpe: Option[Type]): Target[Type] =
       customTpe
-        .fold[Target[ClassOrInterfaceType]](safeParseClassOrInterfaceType("io.vavr.collection.Vector").map(identity))({
+        .fold[Target[ClassOrInterfaceType]](safeParseClassOrInterfaceType(tpeStr))({
           case t: ClassOrInterfaceType =>
             Target.pure(t)
           case x =>
             Target.raiseUserError(s"Unsure how to map $x")
         })
         .map(_.setTypeArguments(new NodeList(value)))
+
+    override def liftArrayType(value: Type, customTpe: Option[Type]): Target[Type] =
+      liftSimpleType(value, "io.vavr.collection.Vector", customTpe)
+
+    override def liftVectorType(value: Type, customTpe: Option[Type]): Target[Type] =
+      liftSimpleType(value, "io.vavr.collection.Vector", customTpe)
 
     override def liftVectorTerm(value: Node): Target[Node] =
       buildMethodCall("io.vavr.collection.Vector.of", Some(value))

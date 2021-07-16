@@ -506,7 +506,7 @@ object ProtocolGenerator {
             typeName              <- formatTypeName(name).map(formattedName => getClsName(name).append(formattedName))
             tpe                   <- selectType(typeName)
             maybeNestedDefinition <- processProperty(name, schema)
-            resolvedType          <- SwaggerUtil.propMetaWithName(tpe, schema)
+            resolvedType          <- SwaggerUtil.propMetaWithName(tpe, schema, Cl.liftVectorType)
             customType            <- SwaggerUtil.customTypeName(schema)
             propertyRequirement = getPropertyRequirement(schema, requiredFields.contains(name), defaultPropertyRequirement)
             defValue  <- defaultValue(typeName, schema, propertyRequirement, definitions)

@@ -19,7 +19,7 @@ object Default {
     implicit val getDefaultBooleanProperty: GetDefault[BooleanSchema] =
       build[BooleanSchema](_.getDefault)
 
-    implicit val getDefaultFloatProperty: GetDefault[NumberSchema] =
+    implicit val getDefaultNumberProperty: GetDefault[NumberSchema] =
       build[NumberSchema](_.getDefault)
 
     implicit val getDefaultIntegerProperty: GetDefault[IntegerSchema] =

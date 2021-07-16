@@ -1,17 +1,17 @@
 package com.twilio.guardrail
 package generators
 
-import io.swagger.v3.oas.models.media.Schema
-import io.swagger.v3.oas.models.parameters._
+import cats.syntax.all._
+import com.twilio.guardrail.SwaggerUtil.ResolvedType
 import com.twilio.guardrail.core.Tracker
 import com.twilio.guardrail.extract.{ Default, FileHashAlgorithm }
 import com.twilio.guardrail.generators.syntax._
 import com.twilio.guardrail.languages.LA
 import com.twilio.guardrail.shims._
-import com.twilio.guardrail.terms.{ CollectionsLibTerms, LanguageTerms, SwaggerTerms }
 import com.twilio.guardrail.terms.framework.FrameworkTerms
-import cats.syntax.all._
-import com.twilio.guardrail.SwaggerUtil.ResolvedType
+import com.twilio.guardrail.terms.{ CollectionsLibTerms, LanguageTerms, SwaggerTerms }
+import io.swagger.v3.oas.models.media.Schema
+import io.swagger.v3.oas.models.parameters._
 
 case class RawParameterName private[generators] (value: String)
 case class RawParameterType private[generators] (tpe: Option[String], format: Option[String])
@@ -55,9 +55,9 @@ object LanguageParameter {
       Cl: CollectionsLibTerms[L, F],
       Sw: SwaggerTerms[L, F]
   ): Tracker[Parameter] => F[LanguageParameter[L]] = { parameter =>
+    import Cl._
     import Fw._
     import Sc._
-    import Cl._
     import Sw._
 
     def paramMeta(param: Tracker[Parameter]): F[SwaggerUtil.ResolvedType[L]] = {
@@ -86,9 +86,12 @@ object LanguageParameter {
           customParamTypeName  <- SwaggerUtil.customTypeName(param)
           customSchemaTypeName <- schema.unwrapTracker.flatTraverse(SwaggerUtil.customTypeName(_: Schema[_]))
           customTypeName = Tracker.cloneHistory(schema, customSchemaTypeName).fold(Tracker.cloneHistory(param, customParamTypeName))(_.map(Option.apply))
-          res <- (SwaggerUtil.typeName[L, F](tpeName.map(Option(_)), fmt, customTypeName), getDefault(tpeName.unwrapTracker, fmt, param))
-            .mapN(SwaggerUtil.Resolved[L](_, None, _, Some(tpeName.unwrapTracker), fmt.unwrapTracker))
-        } yield res
+          tpe <- SwaggerUtil.typeName[L, F](tpeName.map(Option(_)), fmt, customTypeName)
+          resolvedType <- schema.fold[F[ResolvedType[L]]](
+            (tpe.pure[F], getDefault(tpeName.unwrapTracker, fmt, param))
+              .mapN(SwaggerUtil.Resolved[L](_, None, _, Some(tpeName.unwrapTracker), fmt.unwrapTracker))
+          )(schema => SwaggerUtil.propMetaWithName(tpe, schema, liftArrayType))
+        } yield resolvedType
 
       def paramHasRefSchema(p: Parameter): Boolean = Option(p.getSchema).exists(s => Option(s.get$ref()).nonEmpty)
 

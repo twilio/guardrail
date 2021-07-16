@@ -301,7 +301,7 @@ object SwaggerUtil {
             case (Some("integer"), Some("int64"))       => longType()
             case (Some("integer"), fmt)                 => integerType(fmt).map(log(fmt, _))
             case (Some("boolean"), fmt)                 => booleanType(fmt).map(log(fmt, _))
-            case (Some("array"), fmt)                   => arrayType(fmt).map(log(fmt, _))
+            case (Some("array"), fmt)                   => stringType(None).flatMap(liftArrayType(_, None)).map(log(fmt, _))
             case (Some("file"), fmt) =>
               fileType(None).map(log(fmt, _))
             case (Some("binary"), fmt) =>
@@ -330,7 +330,7 @@ object SwaggerUtil {
       Fw: FrameworkTerms[L, F]
   ): F[ResolvedType[L]] = {
     import Fw._
-    propMetaImpl(property)(
+    propMetaImpl(property, Cl.liftVectorType)(
       _.refine({ case o: ObjectSchema => o })(
         o =>
           for {
@@ -350,14 +350,14 @@ object SwaggerUtil {
     } else Option.empty[L#Type].pure[F]
   }
 
-  def propMetaWithName[L <: LA, F[_]](tpe: L#Type, property: Tracker[Schema[_]])(
+  def propMetaWithName[L <: LA, F[_]](tpe: L#Type, property: Tracker[Schema[_]], arrayTypeLifter: (L#Type, Option[L#Type]) => F[L#Type])(
       implicit Sc: LanguageTerms[L, F],
       Cl: CollectionsLibTerms[L, F],
       Sw: SwaggerTerms[L, F],
       Fw: FrameworkTerms[L, F]
   ): F[ResolvedType[L]] = {
     import Fw._
-    propMetaImpl(property)(
+    propMetaImpl(property, arrayTypeLifter)(
       _.refine({ case schema: ObjectSchema if Option(schema.getProperties).exists(p => !p.isEmpty) => schema })(
         _ => (Resolved[L](tpe, None, None, None, None): ResolvedType[L]).pure[F]
       ).orRefine({ case o: ObjectSchema => o })(
@@ -375,7 +375,7 @@ object SwaggerUtil {
     )
   }
 
-  private def propMetaImpl[L <: LA, F[_]](property: Tracker[Schema[_]])(
+  private def propMetaImpl[L <: LA, F[_]](property: Tracker[Schema[_]], arrayTypeLifter: (L#Type, Option[L#Type]) => F[L#Type])(
       strategy: Tracker[Schema[_]] => Either[Tracker[Schema[_]], F[ResolvedType[L]]]
   )(implicit Sc: LanguageTerms[L, F], Cl: CollectionsLibTerms[L, F], Sw: SwaggerTerms[L, F], Fw: FrameworkTerms[L, F]): F[ResolvedType[L]] =
     Sw.log.function("propMeta") {
@@ -411,11 +411,11 @@ object SwaggerUtil {
             p =>
               for {
                 items     <- getItems(p)
-                rec       <- propMetaImpl[L, F](items)(strategy)
+                rec       <- propMetaImpl[L, F](items, arrayTypeLifter)(strategy)
                 arrayType <- customArrayTypeName(p).flatMap(_.flatTraverse(x => parseType(Tracker.cloneHistory(p, x))))
                 res <- rec match {
                   case Resolved(inner, dep, default, _, _) =>
-                    (liftVectorType(inner, arrayType), default.traverse(liftVectorTerm))
+                    (arrayTypeLifter(inner, arrayType), default.traverse(liftVectorTerm))
                       .mapN(Resolved[L](_, dep, _, None, None): ResolvedType[L])
                   case x: DeferredMap[L]   => embedArray(x, arrayType)
                   case x: DeferredArray[L] => embedArray(x, arrayType)
@@ -430,7 +430,7 @@ object SwaggerUtil {
                   .downField("additionalProperties", _.getAdditionalProperties())
                   .map(_.getOrElse(false))
                   .refine[F[ResolvedType[L]]]({ case b: java.lang.Boolean => b })(_ => objectType(None).map(Resolved[L](_, None, None, None, None)))
-                  .orRefine({ case s: Schema[_] => s })(propMetaImpl[L, F](_)(strategy))
+                  .orRefine({ case s: Schema[_] => s })(propMetaImpl[L, F](_, arrayTypeLifter)(strategy))
                   .orRefineFallback({ s =>
                     log.debug(s"Unknown structure cannot be reflected: ${s.unwrapTracker} (${s.showHistory})") >> objectType(None).map(
                       Resolved[L](_, None, None, None, None)
@@ -452,7 +452,11 @@ object SwaggerUtil {
           .orRefine({ case s: EmailSchema => s })(buildResolveNoDefault)
           .orRefine({ case d: DateSchema => d })(buildResolveNoDefault)
           .orRefine({ case d: DateTimeSchema => d })(buildResolveNoDefault)
+          .orRefine({ case i: IntegerSchema if i.getFormat == "int32" => i })(buildResolve(litInt))
+          .orRefine({ case i: IntegerSchema if i.getFormat == "int64" => i })(buildResolve(litLong))
           .orRefine({ case i: IntegerSchema => i })(buildResolveNoDefault)
+          .orRefine({ case d: NumberSchema if d.getFormat == "float" => d })(buildResolve(litFloat))
+          .orRefine({ case d: NumberSchema if d.getFormat == "double" => d })(buildResolve(litDouble))
           .orRefine({ case d: NumberSchema => d })(buildResolveNoDefault)
           .orRefine({ case p: PasswordSchema => p })(buildResolveNoDefault)
           .orRefine({ case f: FileSchema => f })(buildResolveNoDefault)

@@ -10,6 +10,7 @@ import com.twilio.guardrail.{ SwaggerUtil, Target }
 import com.twilio.guardrail.generators.syntax.Java._
 import com.twilio.guardrail.languages.JavaLanguage
 import com.twilio.guardrail.terms.CollectionsLibTerms
+
 @SuppressWarnings(Array("org.wartremover.warts.Null"))
 object JavaCollectionsGenerator {
 
@@ -29,8 +30,8 @@ object JavaCollectionsGenerator {
 
     def emptyOptionalTerm(): Target[Node] = buildMethodCall("java.util.Optional.empty")
 
-    def arrayType(format: Option[String]): Target[Type] =
-      safeParseClassOrInterfaceType("java.util.List").map(_.setTypeArguments(new NodeList[Type](STRING_TYPE)))
+    def liftArrayType(value: Type, customTpe: Option[Type]): Target[Type] =
+      liftVectorType(value, customTpe)
 
     def liftVectorType(value: Type, customTpe: Option[Type]): Target[Type] =
       customTpe

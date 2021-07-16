@@ -46,6 +46,18 @@ class DefaultParametersTest extends AnyFunSuite with Matchers with SwaggerSpecRu
     |        format: int32
     |        required: true
     |        default: 2
+    |      - name: defparm_double
+    |        in: query
+    |        type: number
+    |        format: double
+    |        required: true
+    |        default: 12345.6
+    |      - name: defparm_long
+    |        in: query
+    |        type: integer
+    |        format: int64
+    |        required: true
+    |        default: 998877665544
     |      responses:
     |        '200':
     |          description: successful operation
@@ -154,9 +166,9 @@ class DefaultParametersTest extends AnyFunSuite with Matchers with SwaggerSpecRu
         val getOrderByIdOKDecoder = {
           structuredJsonEntityUnmarshaller.flatMap(_ => _ => json => io.circe.Decoder[Order].decodeJson(json).fold(FastFuture.failed, FastFuture.successful))
         }
-        def getOrderById(orderId: Long, defparmOpt: Option[Int] = Option(1), defparm: Int = 2, headerMeThis: String, headers: List[HttpHeader] = Nil): EitherT[Future, Either[Throwable, HttpResponse], GetOrderByIdResponse] = {
+        def getOrderById(orderId: Long, defparmOpt: Option[Int] = Option(1), defparm: Int = 2, defparmDouble: Double = 12345.6d, defparmLong: Long = 998877665544L, headerMeThis: String, headers: List[HttpHeader] = Nil): EitherT[Future, Either[Throwable, HttpResponse], GetOrderByIdResponse] = {
           val allHeaders = headers ++ scala.collection.immutable.Seq[Option[HttpHeader]](Some(RawHeader("HeaderMeThis", Formatter.show(headerMeThis)))).flatten
-          makeRequest(HttpMethods.GET, host + basePath + "/store/order/" + Formatter.addPath(orderId) + "?" + Formatter.addArg("defparm_opt", defparmOpt) + Formatter.addArg("defparm", defparm), allHeaders, HttpEntity.Empty, HttpProtocols.`HTTP/1.1`).flatMap(req => EitherT(httpClient(req).flatMap(resp => resp.status match {
+          makeRequest(HttpMethods.GET, host + basePath + "/store/order/" + Formatter.addPath(orderId) + "?" + Formatter.addArg("defparm_opt", defparmOpt) + Formatter.addArg("defparm", defparm) + Formatter.addArg("defparm_double", defparmDouble) + Formatter.addArg("defparm_long", defparmLong), allHeaders, HttpEntity.Empty, HttpProtocols.`HTTP/1.1`).flatMap(req => EitherT(httpClient(req).flatMap(resp => resp.status match {
             case StatusCodes.OK =>
               Unmarshal(resp.entity).to[Order](getOrderByIdOKDecoder, implicitly, implicitly).map(x => Right(GetOrderByIdResponse.OK(x)))
             case StatusCodes.BadRequest =>
