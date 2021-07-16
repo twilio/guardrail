@@ -82,8 +82,8 @@ object DropwizardServerGenerator {
       mods = List(mod"@(NotNull @param @field)") ++
             param.decltpe
               .flatMap({
-                case Type.Select(Term.Select(q"java", q"time"), Type.Name(_))                     => Some(mod"@UnwrapValidatedValue")
-                case Type.Select(Term.Select(q"GuardrailJerseySupport", q"Jsr310"), Type.Name(_)) => Some(mod"@UnwrapValidatedValue")
+                case Type.Select(Term.Select(q"java", q"time"), Type.Name(_))                     => Some(mod"@Unwrapping")
+                case Type.Select(Term.Select(q"GuardrailJerseySupport", q"Jsr310"), Type.Name(_)) => Some(mod"@Unwrapping")
                 case _                                                                            => None
               })
               .toList ++ param.mods
@@ -151,7 +151,7 @@ object DropwizardServerGenerator {
           q"import javax.ws.rs.core.{MediaType, Response}",
           q"import javax.ws.rs.{Consumes, DELETE, FormParam, GET, HEAD, HeaderParam, OPTIONS, POST, PUT, Path, PathParam, Produces, QueryParam}",
           q"import org.glassfish.jersey.media.multipart.FormDataParam",
-          q"import org.hibernate.validator.valuehandling.UnwrapValidatedValue",
+          q"import javax.validation.valueextraction.Unwrapping",
           q"import org.slf4j.LoggerFactory",
           q"import scala.annotation.meta.{field, param}",
           q"import scala.concurrent.{ExecutionContext, Future}",
