@@ -10,7 +10,7 @@ addSbtPlugin("com.geirsson" % "sbt-ci-release" % "1.5.7")
 
 addSbtPlugin("ohnosequences" % "sbt-github-release" % "0.7.0")
 
-addSbtPlugin("org.wartremover" % "sbt-wartremover" % "2.4.15")
+addSbtPlugin("org.wartremover" % "sbt-wartremover" % "2.4.16")
 
 addSbtPlugin("com.47deg"  % "sbt-microsites" % "1.3.4")
 
