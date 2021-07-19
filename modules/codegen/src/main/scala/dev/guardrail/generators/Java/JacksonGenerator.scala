@@ -126,7 +126,6 @@ object JacksonGenerator {
                     new AssignExpr(
                       new FieldAccessExpr(new ThisExpr, term.parameterName),
                       term.fieldType match {
-                        case _: PrimitiveType => new NameExpr(term.parameterName)
                         case ft if ft.isOptionalType =>
                           new ConditionalExpr(
                             new BinaryExpr(new NameExpr(term.parameterName), new NullLiteralExpr, BinaryExpr.Operator.EQUALS),
@@ -470,7 +469,7 @@ object JacksonGenerator {
             new NodeList(
               withoutDiscriminators(parentTerms ++ terms).map({
                 case ParameterTerm(propertyName, parameterName, fieldType, _, _, _, _) =>
-                  new Parameter(new NodeList(finalModifier), fieldType, new SimpleName(parameterName))
+                  new Parameter(new NodeList(finalModifier), fieldType.box, new SimpleName(parameterName))
                     .addAnnotation(new SingleMemberAnnotationExpr(new Name("JsonProperty"), new StringLiteralExpr(propertyName)))
               }): _*
             )
@@ -1084,7 +1083,7 @@ object JacksonGenerator {
           .addConstructor(PROTECTED)
           .setParameters(
             (parentTerms ++ terms)
-              .map(term => new Parameter(new NodeList(finalModifier), term.fieldType, new SimpleName(term.parameterName)))
+              .map(term => new Parameter(new NodeList(finalModifier), term.fieldType.box, new SimpleName(term.parameterName)))
               .toNodeList
           )
           .setBody(constructorBody)

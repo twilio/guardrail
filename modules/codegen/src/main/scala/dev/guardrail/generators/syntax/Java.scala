@@ -2,7 +2,7 @@ package dev.guardrail.generators.syntax
 
 import cats.syntax.all._
 import com.github.javaparser.StaticJavaParser
-import com.github.javaparser.ast.`type`.{ ClassOrInterfaceType, Type }
+import com.github.javaparser.ast.`type`.{ ClassOrInterfaceType, PrimitiveType, Type }
 import com.github.javaparser.ast.body._
 import com.github.javaparser.ast.comments.{ BlockComment, Comment }
 import com.github.javaparser.ast.expr._
@@ -11,6 +11,7 @@ import com.github.javaparser.ast.{ CompilationUnit, ImportDeclaration, Node, Nod
 import dev.guardrail.languages.JavaLanguage
 import dev.guardrail.languages.JavaLanguage.JavaTypeName
 import dev.guardrail.{ RuntimeFailure, SupportDefinition, Target }
+
 import scala.collection.JavaConverters._
 import scala.compat.java8.OptionConverters._
 import scala.reflect.ClassTag
@@ -22,6 +23,12 @@ object Java {
       tpe match {
         case cls: ClassOrInterfaceType => cls.getTypeArguments.asScala.filter(_.size == 1).fold(tpe)(_.get(0))
         case _                         => tpe
+      }
+
+    def box: Type =
+      tpe match {
+        case pt: PrimitiveType => pt.toBoxedType
+        case _                 => tpe
       }
 
     def unbox: Type =
